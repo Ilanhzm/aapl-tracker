@@ -15,6 +15,8 @@ export default function Dashboard() {
   const [sendStatus, setSendStatus] = useState('');
   const [lastUpdated, setLastUpdated] = useState('');
   const canvasRef = useRef(null);
+  const dotCanvasRef = useRef(null);
+  const lastPointRef = useRef(null);
 
   async function fetchPrice() {
     try {
@@ -34,7 +36,7 @@ export default function Dashboard() {
     return () => clearInterval(id);
   }, []);
 
-  // Draw intraday chart on canvas
+  // Draw static chart (redraws only when data changes)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || chartPoints.length < 2) return;
@@ -47,16 +49,17 @@ export default function Dashboard() {
     ctx.clearRect(0, 0, W, H);
 
     const prices = chartPoints.map((p) => p.price);
-    const times = chartPoints.map((p) => p.time);
     const minP = Math.min(...prices);
     const maxP = Math.max(...prices);
     const pRange = maxP - minP || 1;
-    const minT = times[0];
-    const maxT = times[times.length - 1];
-    const tRange = maxT - minT || 1;
+
+    // Fixed X axis: 9:30 AM to 4:00 PM ET (6.5 hours)
+    const marketOpenMs = chartPoints[0].time;
+    const marketCloseMs = marketOpenMs + 6.5 * 60 * 60 * 1000;
+    const tRange = marketCloseMs - marketOpenMs;
 
     const toX = (t) =>
-      pad.left + ((t - minT) / tRange) * (W - pad.left - pad.right);
+      pad.left + ((t - marketOpenMs) / tRange) * (W - pad.left - pad.right);
     const toY = (p) =>
       H - pad.bottom - ((p - minP) / pRange) * (H - pad.top - pad.bottom);
 
@@ -91,6 +94,8 @@ export default function Dashboard() {
     grad.addColorStop(0, `rgba(${fillColor},0.35)`);
     grad.addColorStop(1, `rgba(${fillColor},0.0)`);
 
+    const lastPt = chartPoints[chartPoints.length - 1];
+
     ctx.fillStyle = grad;
     ctx.beginPath();
     chartPoints.forEach((p, i) => {
@@ -99,8 +104,8 @@ export default function Dashboard() {
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     });
-    ctx.lineTo(toX(maxT), H - pad.bottom);
-    ctx.lineTo(toX(minT), H - pad.bottom);
+    ctx.lineTo(toX(lastPt.time), H - pad.bottom);
+    ctx.lineTo(toX(marketOpenMs), H - pad.bottom);
     ctx.closePath();
     ctx.fill();
 
@@ -117,20 +122,25 @@ export default function Dashboard() {
     });
     ctx.stroke();
 
-    // Latest price dot
-    const lastPt = chartPoints[chartPoints.length - 1];
-    ctx.fillStyle = isPositive ? '#818cf8' : '#f87171';
-    ctx.beginPath();
-    ctx.arc(toX(lastPt.time), toY(lastPt.price), 4, 0, Math.PI * 2);
-    ctx.fill();
+    // Store last point position for the blinking dot animation
+    lastPointRef.current = {
+      x: toX(lastPt.time),
+      y: toY(lastPt.price),
+      color: isPositive ? '99,102,241' : '239,68,68',
+    };
 
-    // Time axis labels
-    const labelCount = 5;
+    // Time axis labels fixed from 9:30 to 16:00
+    const timeLabels = [
+      marketOpenMs,
+      marketOpenMs + 1.5 * 60 * 60 * 1000,
+      marketOpenMs + 3 * 60 * 60 * 1000,
+      marketOpenMs + 4.5 * 60 * 60 * 1000,
+      marketCloseMs,
+    ];
     ctx.fillStyle = '#555';
     ctx.font = '11px monospace';
     ctx.textAlign = 'center';
-    for (let i = 0; i <= labelCount; i++) {
-      const t = minT + (i / labelCount) * tRange;
+    timeLabels.forEach((t) => {
       const x = toX(t);
       const label = new Date(t).toLocaleTimeString('en-US', {
         hour: '2-digit',
@@ -139,8 +149,36 @@ export default function Dashboard() {
         timeZone: 'America/New_York',
       });
       ctx.fillText(label + ' ET', x, H - 8);
-    }
+    });
   }, [chartPoints]);
+
+  // Blinking dot animation on overlay canvas
+  useEffect(() => {
+    const dotCanvas = dotCanvasRef.current;
+    if (!dotCanvas) return;
+    let animFrame;
+    const animate = () => {
+      const pt = lastPointRef.current;
+      const ctx = dotCanvas.getContext('2d');
+      ctx.clearRect(0, 0, dotCanvas.width, dotCanvas.height);
+      if (pt) {
+        const pulse = (Math.sin(Date.now() / 400) + 1) / 2;
+        const outerRadius = 5 + pulse * 9;
+        const outerOpacity = 0.55 - pulse * 0.55;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, outerRadius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${pt.color}, ${outerOpacity})`;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${pt.color}, 1)`;
+        ctx.fill();
+      }
+      animFrame = requestAnimationFrame(animate);
+    };
+    animFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animFrame);
+  }, []);
 
   async function sendTelegram() {
     if (!message.trim()) return;
@@ -286,12 +324,28 @@ export default function Dashboard() {
                 : 'Not enough data points yet'}
             </div>
           ) : (
-            <canvas
-              ref={canvasRef}
-              width={880}
-              height={280}
-              style={{ width: '100%', display: 'block', borderRadius: '8px' }}
-            />
+            <div style={{ position: 'relative' }}>
+              <canvas
+                ref={canvasRef}
+                width={880}
+                height={280}
+                style={{ width: '100%', display: 'block', borderRadius: '8px' }}
+              />
+              <canvas
+                ref={dotCanvasRef}
+                width={880}
+                height={280}
+                style={{
+                  width: '100%',
+                  display: 'block',
+                  borderRadius: '8px',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  pointerEvents: 'none',
+                }}
+              />
+            </div>
           )}
         </div>
 
