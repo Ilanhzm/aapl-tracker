@@ -1,4 +1,5 @@
 const { schedule } = require('@netlify/functions');
+const { addLogEntry } = require('./_log');
 
 exports.handler = schedule('20 13 * * 1-5', async () => {
   try {
@@ -30,6 +31,7 @@ exports.handler = schedule('20 13 * * 1-5', async () => {
         }),
       }
     );
+    await addLogEntry(message, 'scheduled', 'Pre-market alert');
   } catch (err) {
     console.error('market-open-alert failed:', err.message);
   }

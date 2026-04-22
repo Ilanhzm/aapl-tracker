@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [message, setMessage] = useState('');
   const [sendStatus, setSendStatus] = useState('');
   const [lastUpdated, setLastUpdated] = useState('');
+  const [logEntries, setLogEntries] = useState([]);
   const canvasRef = useRef(null);
   const dotCanvasRef = useRef(null);
   const lastPointRef = useRef(null);
@@ -30,8 +31,18 @@ export default function Dashboard() {
     } catch {}
   }
 
+  async function fetchLog() {
+    try {
+      const res = await fetch('/api/log');
+      if (!res.ok) return;
+      const data = await res.json();
+      setLogEntries(data.entries || []);
+    } catch {}
+  }
+
   useEffect(() => {
     fetchPrice();
+    fetchLog();
     const id = setInterval(fetchPrice, 30000);
     return () => clearInterval(id);
   }, []);
@@ -200,6 +211,7 @@ export default function Dashboard() {
       if (res.ok) {
         setSendStatus('✓ Sent');
         setMessage('');
+        fetchLog();
       } else {
         setSendStatus('Error sending');
       }
@@ -407,6 +419,145 @@ export default function Dashboard() {
           {sendStatus && (
             <div style={{ marginTop: '8px', fontSize: '13px', color: '#888' }}>
               {sendStatus}
+            </div>
+          )}
+        </div>
+
+        {/* Message Log */}
+        <div
+          style={{
+            background: '#1a1a2e',
+            borderRadius: '14px',
+            padding: '20px',
+            marginTop: '20px',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '16px',
+            }}
+          >
+            <div style={{ fontSize: '13px', color: '#555' }}>
+              Telegram Message Log
+            </div>
+            <div style={{ fontSize: '12px', color: '#333' }}>
+              {logEntries.length} message{logEntries.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+
+          {logEntries.length === 0 ? (
+            <div
+              style={{
+                textAlign: 'center',
+                color: '#333',
+                fontSize: '13px',
+                padding: '24px 0',
+              }}
+            >
+              No messages yet
+            </div>
+          ) : (
+            <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
+              {(() => {
+                const groups = [];
+                let lastDate = null;
+                logEntries.forEach((entry) => {
+                  const d = new Date(entry.timestamp);
+                  const dateKey = d.toLocaleDateString('en-GB', {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    timeZone: 'Asia/Jerusalem',
+                  });
+                  if (dateKey !== lastDate) {
+                    groups.push({ date: dateKey, entries: [] });
+                    lastDate = dateKey;
+                  }
+                  groups[groups.length - 1].entries.push(entry);
+                });
+
+                return groups.map((group) => (
+                  <div key={group.date} style={{ marginBottom: '16px' }}>
+                    <div
+                      style={{
+                        fontSize: '11px',
+                        color: '#444',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.08em',
+                        marginBottom: '8px',
+                        borderBottom: '1px solid #1e1e3a',
+                        paddingBottom: '4px',
+                      }}
+                    >
+                      {group.date}
+                    </div>
+                    {group.entries.map((entry) => {
+                      const isScheduled = entry.type === 'scheduled';
+                      const time = new Date(entry.timestamp).toLocaleTimeString(
+                        'en-GB',
+                        {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          timeZone: 'Asia/Jerusalem',
+                        }
+                      );
+                      return (
+                        <div
+                          key={entry.id}
+                          style={{
+                            display: 'flex',
+                            gap: '10px',
+                            alignItems: 'flex-start',
+                            padding: '8px 10px',
+                            borderRadius: '8px',
+                            marginBottom: '4px',
+                            background: '#0f0f1a',
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              color: '#555',
+                              minWidth: '40px',
+                              paddingTop: '1px',
+                            }}
+                          >
+                            {time}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '10px',
+                              padding: '2px 7px',
+                              borderRadius: '4px',
+                              background: isScheduled ? '#1e1e3a' : '#1a2e1a',
+                              color: isScheduled ? '#6366f1' : '#4ade80',
+                              whiteSpace: 'nowrap',
+                              minWidth: '90px',
+                              textAlign: 'center',
+                            }}
+                          >
+                            {entry.source}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '12px',
+                              color: '#888',
+                              lineHeight: '1.5',
+                              whiteSpace: 'pre-line',
+                            }}
+                          >
+                            {entry.message}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ));
+              })()}
             </div>
           )}
         </div>

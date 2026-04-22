@@ -1,4 +1,5 @@
 import { getToken } from 'next-auth/jwt';
+import { addLogEntry } from '../../lib/log';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -23,6 +24,7 @@ export default async function handler(req, res) {
     );
     const data = await r.json();
     if (!data.ok) throw new Error(data.description);
+    await addLogEntry(message, 'manual', 'Manual');
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

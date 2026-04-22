@@ -1,4 +1,5 @@
 const { schedule } = require('@netlify/functions');
+const { addLogEntry } = require('./_log');
 
 exports.handler = schedule('0 20 * * 1-5', async () => {
   try {
@@ -30,6 +31,7 @@ exports.handler = schedule('0 20 * * 1-5', async () => {
         }),
       }
     );
+    await addLogEntry(message, 'scheduled', 'Market close');
   } catch (err) {
     console.error('market-close-price failed:', err.message);
   }
