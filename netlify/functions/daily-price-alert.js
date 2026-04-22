@@ -1,6 +1,6 @@
 const { schedule } = require('@netlify/functions');
 
-const handler = schedule('20 17 * * *', async () => {
+exports.handler = schedule('20 17 * * *', async () => {
   try {
     const url =
       'https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=5m&range=1d';
@@ -33,5 +33,3 @@ const handler = schedule('20 17 * * *', async () => {
 
   return { statusCode: 200 };
 });
-
-exports.handler = handler;
