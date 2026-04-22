@@ -154,10 +154,11 @@ export default function Dashboard() {
 
   // Blinking dot animation on overlay canvas
   useEffect(() => {
-    const dotCanvas = dotCanvasRef.current;
-    if (!dotCanvas) return;
+    if (chartPoints.length < 2) return;
     let animFrame;
     const animate = () => {
+      const dotCanvas = dotCanvasRef.current;
+      if (!dotCanvas) { animFrame = requestAnimationFrame(animate); return; }
       const pt = lastPointRef.current;
       const ctx = dotCanvas.getContext('2d');
       ctx.clearRect(0, 0, dotCanvas.width, dotCanvas.height);
@@ -185,7 +186,7 @@ export default function Dashboard() {
     };
     animFrame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animFrame);
-  }, []);
+  }, [chartPoints]);
 
   async function sendTelegram() {
     if (!message.trim()) return;
