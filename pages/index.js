@@ -1,6 +1,6 @@
-import { getSession, signOut } from 'next-auth/react';
+import { getSession } from 'next-auth/react';
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import Layout from '../components/Layout';
 
 export async function getServerSideProps(ctx) {
   const session = await getSession({ req: ctx.req });
@@ -227,56 +227,13 @@ export default function Dashboard() {
   const isUp = changeVal !== null && changeVal >= 0;
 
   return (
-    <div
-      style={{
-        background: '#0f0f1a',
-        minHeight: '100vh',
-        color: '#fff',
-        fontFamily: 'monospace',
-        padding: '28px 20px',
-      }}
-    >
-      <div style={{ maxWidth: '920px', margin: '0 auto' }}>
+    <Layout>
+      <div style={{ padding: '28px 24px', maxWidth: '900px' }}>
         {/* Header */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '28px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <h1 style={{ margin: 0, fontSize: '22px', color: '#a5b4fc' }}>
-              AAPL Market Dashboard
-            </h1>
-            <Link
-              href="/simulate"
-              style={{
-                fontSize: '13px',
-                color: '#555',
-                textDecoration: 'none',
-                borderBottom: '1px solid #333',
-              }}
-            >
-              Simulate Hike →
-            </Link>
-          </div>
-          <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            style={{
-              background: '#1e1e3a',
-              color: '#888',
-              border: '1px solid #2a2a4a',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontFamily: 'monospace',
-              fontSize: '13px',
-            }}
-          >
-            Sign Out
-          </button>
+        <div style={{ marginBottom: '28px' }}>
+          <h1 style={{ margin: 0, fontSize: '20px', color: '#a5b4fc' }}>
+            AAPL Market Dashboard
+          </h1>
         </div>
 
         {/* Price card */}
@@ -576,6 +533,6 @@ export default function Dashboard() {
           )}
         </div>
       </div>
-    </div>
+    </Layout>
   );
 }
