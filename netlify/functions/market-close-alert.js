@@ -1,6 +1,6 @@
 const { schedule } = require('@netlify/functions');
 
-exports.handler = schedule('28 17 * * *', async () => {
+exports.handler = schedule('30 20 * * 1-5', async () => {
   try {
     const url =
       'https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=5m&range=1d';
@@ -17,18 +17,21 @@ exports.handler = schedule('28 17 * * *', async () => {
     const change = (((price - open) / open) * 100).toFixed(2);
     const direction = price >= open ? '▲' : '▼';
 
-    const message = `AAPL Morning Update\nPrice: $${price}\n${direction} ${change}% vs open ($${open})`;
+    const message = `AAPL - Market Closed\nClosing price: $${price}\n${direction} ${change}% today (opened at $${open})`;
 
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const chatId = process.env.TELEGRAM_CHAT_ID;
-
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text: message }),
-    });
+    await fetch(
+      `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: process.env.TELEGRAM_CHAT_ID,
+          text: message,
+        }),
+      }
+    );
   } catch (err) {
-    console.error('Scheduled alert failed:', err.message);
+    console.error('market-close-alert failed:', err.message);
   }
 
   return { statusCode: 200 };
