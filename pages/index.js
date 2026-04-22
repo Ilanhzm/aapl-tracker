@@ -1,5 +1,6 @@
 import { getSession, signOut } from 'next-auth/react';
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 
 export async function getServerSideProps(ctx) {
   const session = await getSession({ req: ctx.req });
@@ -245,9 +246,22 @@ export default function Dashboard() {
             marginBottom: '28px',
           }}
         >
-          <h1 style={{ margin: 0, fontSize: '22px', color: '#a5b4fc' }}>
-            AAPL Market Dashboard
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <h1 style={{ margin: 0, fontSize: '22px', color: '#a5b4fc' }}>
+              AAPL Market Dashboard
+            </h1>
+            <Link
+              href="/simulate"
+              style={{
+                fontSize: '13px',
+                color: '#555',
+                textDecoration: 'none',
+                borderBottom: '1px solid #333',
+              }}
+            >
+              Simulate Hike →
+            </Link>
+          </div>
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
             style={{
