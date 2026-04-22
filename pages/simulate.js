@@ -119,9 +119,10 @@ export default function SimulateHike() {
             lineHeight: '1.7',
           }}
         >
-          Enter a VIX single-day jump percentage. The algorithm scans{' '}
-          <span style={{ color: '#888' }}>35+ years</span> of historical VIX data
-          and tells you how often a move of that size has happened.
+          Enter the VIX single-day jump % you&apos;re considering. The algorithm scans{' '}
+          <span style={{ color: '#888' }}>35+ years</span> of historical VIX data and
+          tells you how likely VIX was to revert back to its pre-jump level within
+          the following <span style={{ color: '#888' }}>2 weeks (10 trading days)</span>.
         </div>
 
         {/* Input card */}
@@ -203,7 +204,7 @@ export default function SimulateHike() {
           }}
         >
           <div style={{ fontSize: '13px', color: '#555', marginBottom: '20px' }}>
-            Historical probability
+            Reversion probability — within 2 weeks
           </div>
 
           {result && (
@@ -229,9 +230,9 @@ export default function SimulateHike() {
                   {result.probability}%
                 </div>
                 <div style={{ paddingBottom: '10px', color: '#555', fontSize: '14px' }}>
-                  of trading days saw a
+                  of the time, VIX reverted
                   <br />
-                  jump of ≥ {result.jump}%
+                  within 2 weeks after a ≥{result.jump}% spike
                 </div>
               </div>
 
@@ -259,12 +260,12 @@ export default function SimulateHike() {
               {/* Stats row */}
               <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                 <StatBox
-                  label="Matching days"
-                  value={result.matchingDays.toLocaleString()}
+                  label="Reverted"
+                  value={result.reversions.toLocaleString()}
                 />
                 <StatBox
-                  label="Total days"
-                  value={result.totalDays.toLocaleString()}
+                  label="Spike instances"
+                  value={result.instances.toLocaleString()}
                 />
                 <StatBox
                   label="Likelihood"
@@ -292,7 +293,7 @@ export default function SimulateHike() {
 
         {/* Data note */}
         <div style={{ fontSize: '12px', color: '#2a2a4a', textAlign: 'center' }}>
-          Based on daily VIX closing prices · Jan 1990 – Apr 2026 · {result ? result.totalDays.toLocaleString() : '~9,130'} trading days
+          Based on daily VIX closing prices · Jan 1990 – Apr 2026 · reversion window: 10 trading days
         </div>
       </div>
     </div>
