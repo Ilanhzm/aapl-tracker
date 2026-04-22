@@ -51,9 +51,15 @@ export default function SimulateHike() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.clientWidth || 600;
+    const cssH = canvas.clientHeight || 240;
+    canvas.width = cssW * dpr;
+    canvas.height = cssH * dpr;
     const ctx = canvas.getContext('2d');
-    const W = canvas.width;
-    const H = canvas.height;
+    ctx.scale(dpr, dpr);
+    const W = cssW;
+    const H = cssH;
     ctx.clearRect(0, 0, W, H);
 
     // Dark background
@@ -296,10 +302,8 @@ export default function SimulateHike() {
 
             <canvas
               ref={canvasRef}
-              width={600}
-              height={240}
               style={{
-                width: '100%', borderRadius: '10px',
+                width: '100%', height: '240px', borderRadius: '10px',
                 border: '1px solid #1a1a2e', display: 'block',
               }}
             />

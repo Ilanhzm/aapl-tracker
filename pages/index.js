@@ -83,9 +83,16 @@ export default function Dashboard() {
     const canvas = canvasRef.current;
     if (!canvas || chartPoints.length < 2) return;
 
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.clientWidth || 860;
+    const cssH = canvas.clientHeight || 260;
+    canvas.width = cssW * dpr;
+    canvas.height = cssH * dpr;
+
     const ctx = canvas.getContext('2d');
-    const W = canvas.width;
-    const H = canvas.height;
+    ctx.scale(dpr, dpr);
+    const W = cssW;
+    const H = cssH;
     const pad = { top: 20, right: 20, bottom: 36, left: 64 };
 
     ctx.clearRect(0, 0, W, H);
@@ -173,8 +180,10 @@ export default function Dashboard() {
     const animate = () => {
       const dotCanvas = dotCanvasRef.current;
       if (!dotCanvas) { animFrame = requestAnimationFrame(animate); return; }
+      const dpr = window.devicePixelRatio || 1;
       const pt = lastPointRef.current;
       const ctx = dotCanvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, dotCanvas.width, dotCanvas.height);
       if (pt) {
         const pulse = (Math.sin(Date.now() / 500) + 1) / 2;
@@ -292,10 +301,10 @@ export default function Dashboard() {
               </div>
             ) : (
               <div style={{ position: 'relative' }}>
-                <canvas ref={canvasRef} width={860} height={260}
-                  style={{ width: '100%', display: 'block', borderRadius: '8px' }} />
-                <canvas ref={dotCanvasRef} width={860} height={260}
-                  style={{ width: '100%', display: 'block', borderRadius: '8px', position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
+                <canvas ref={canvasRef}
+                  style={{ width: '100%', height: '260px', display: 'block', borderRadius: '8px' }} />
+                <canvas ref={dotCanvasRef}
+                  style={{ width: '100%', height: '260px', display: 'block', borderRadius: '8px', position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
               </div>
             )}
           </div>
