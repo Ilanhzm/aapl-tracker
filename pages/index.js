@@ -8,9 +8,35 @@ export async function getServerSideProps(ctx) {
   return { props: {} };
 }
 
+function useSMN(target, duration = 1000) {
+  const [display, setDisplay] = useState('—');
+  const rafRef = useRef(null);
+  const prevTarget = useRef(null);
+
+  useEffect(() => {
+    if (target === null || target === undefined) return;
+    cancelAnimationFrame(rafRef.current);
+    const start = Date.now();
+    const from = prevTarget.current ?? 0;
+    const to = target;
+    const tick = () => {
+      const t = Math.min((Date.now() - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplay((from + (to - from) * eased).toFixed(2));
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+      else prevTarget.current = to;
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target, duration]);
+
+  return display;
+}
+
 export default function Dashboard() {
   const [price, setPrice] = useState(null);
-  const [openPrice, setOpenPrice] = useState(null);
+  const [change2d, setChange2d] = useState(null);
+  const [open2d, setOpen2d] = useState(null);
   const [chartPoints, setChartPoints] = useState([]);
   const [message, setMessage] = useState('');
   const [sendStatus, setSendStatus] = useState('');
@@ -20,13 +46,17 @@ export default function Dashboard() {
   const dotCanvasRef = useRef(null);
   const lastPointRef = useRef(null);
 
+  const animChange = useSMN(change2d !== null ? Math.abs(change2d) : null);
+  const isUp = change2d !== null && change2d >= 0;
+
   async function fetchPrice() {
     try {
-      const res = await fetch('/api/price');
+      const res = await fetch('/api/price?range=2d');
       if (!res.ok) return;
       const data = await res.json();
       setPrice(data.price);
-      setOpenPrice(data.openPrice);
+      setChange2d(data.change2d);
+      setOpen2d(data.open2d);
       setChartPoints(data.chartPoints || []);
       setLastUpdated(new Date().toLocaleTimeString());
     } catch {}
@@ -48,7 +78,7 @@ export default function Dashboard() {
     return () => clearInterval(id);
   }, []);
 
-  // Draw static chart (redraws only when data changes)
+  // Draw 2-day chart
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || chartPoints.length < 2) return;
@@ -65,106 +95,78 @@ export default function Dashboard() {
     const maxP = Math.max(...prices);
     const pRange = maxP - minP || 1;
 
-    // Fixed X axis: 9:30 AM to 4:00 PM ET (6.5 hours)
-    const marketOpenMs = chartPoints[0].time;
-    const marketCloseMs = marketOpenMs + 6.5 * 60 * 60 * 1000;
-    const tRange = marketCloseMs - marketOpenMs;
+    const tMin = chartPoints[0].time;
+    const tMax = chartPoints[chartPoints.length - 1].time;
+    const tRange = tMax - tMin || 1;
 
-    const toX = (t) =>
-      pad.left + ((t - marketOpenMs) / tRange) * (W - pad.left - pad.right);
-    const toY = (p) =>
-      H - pad.bottom - ((p - minP) / pRange) * (H - pad.top - pad.bottom);
+    const toX = (t) => pad.left + ((t - tMin) / tRange) * (W - pad.left - pad.right);
+    const toY = (p) => H - pad.bottom - ((p - minP) / pRange) * (H - pad.top - pad.bottom);
 
-    // Background
-    ctx.fillStyle = '#0f0f1a';
+    ctx.fillStyle = '#0a0a12';
     ctx.fillRect(0, 0, W, H);
 
-    // Horizontal grid lines + price labels
-    const gridLines = 5;
-    for (let i = 0; i <= gridLines; i++) {
-      const y = pad.top + (i / gridLines) * (H - pad.top - pad.bottom);
-      const pVal = maxP - (i / gridLines) * pRange;
+    const lineColor = isUp ? '74,222,128' : '248,113,113';
 
-      ctx.strokeStyle = '#1e1e3a';
+    // Grid lines
+    for (let i = 0; i <= 5; i++) {
+      const y = pad.top + (i / 5) * (H - pad.top - pad.bottom);
+      const pVal = maxP - (i / 5) * pRange;
+      ctx.strokeStyle = '#1a1a2e';
       ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(pad.left, y);
-      ctx.lineTo(W - pad.right, y);
-      ctx.stroke();
-
-      ctx.fillStyle = '#666';
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+      ctx.fillStyle = '#444';
       ctx.font = '11px monospace';
       ctx.textAlign = 'right';
       ctx.fillText('$' + pVal.toFixed(2), pad.left - 6, y + 4);
     }
 
-    // Gradient fill under the line
-    const isPositive =
-      chartPoints[chartPoints.length - 1].price >= chartPoints[0].price;
-    const fillColor = isPositive ? '99,102,241' : '239,68,68';
+    // Gradient fill
     const grad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
-    grad.addColorStop(0, `rgba(${fillColor},0.35)`);
-    grad.addColorStop(1, `rgba(${fillColor},0.0)`);
+    grad.addColorStop(0, `rgba(${lineColor},0.3)`);
+    grad.addColorStop(1, `rgba(${lineColor},0.0)`);
 
     const lastPt = chartPoints[chartPoints.length - 1];
 
     ctx.fillStyle = grad;
     ctx.beginPath();
     chartPoints.forEach((p, i) => {
-      const x = toX(p.time);
-      const y = toY(p.price);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+      const x = toX(p.time); const y = toY(p.price);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     });
     ctx.lineTo(toX(lastPt.time), H - pad.bottom);
-    ctx.lineTo(toX(marketOpenMs), H - pad.bottom);
-    ctx.closePath();
-    ctx.fill();
+    ctx.lineTo(toX(tMin), H - pad.bottom);
+    ctx.closePath(); ctx.fill();
 
-    // Price line
-    ctx.strokeStyle = isPositive ? '#6366f1' : '#ef4444';
+    // Line
+    ctx.strokeStyle = `rgba(${lineColor},1)`;
     ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
     ctx.beginPath();
     chartPoints.forEach((p, i) => {
-      const x = toX(p.time);
-      const y = toY(p.price);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+      const x = toX(p.time); const y = toY(p.price);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     });
     ctx.stroke();
 
-    // Store last point position for the blinking dot animation
-    lastPointRef.current = {
-      x: toX(lastPt.time),
-      y: toY(lastPt.price),
-      color: isPositive ? '99,102,241' : '239,68,68',
-    };
+    lastPointRef.current = { x: toX(lastPt.time), y: toY(lastPt.price), color: lineColor };
 
-    // Time axis labels fixed from 9:30 to 16:00
-    const timeLabels = [
-      marketOpenMs,
-      marketOpenMs + 1.5 * 60 * 60 * 1000,
-      marketOpenMs + 3 * 60 * 60 * 1000,
-      marketOpenMs + 4.5 * 60 * 60 * 1000,
-      marketCloseMs,
-    ];
-    ctx.fillStyle = '#555';
+    // Time labels — show day boundaries
+    ctx.fillStyle = '#444';
     ctx.font = '11px monospace';
     ctx.textAlign = 'center';
-    timeLabels.forEach((t) => {
+    const labelCount = 5;
+    for (let i = 0; i <= labelCount; i++) {
+      const t = tMin + (i / labelCount) * tRange;
       const x = toX(t);
-      const label = new Date(t).toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-        timeZone: 'America/New_York',
+      const label = new Date(t).toLocaleString('en-US', {
+        hour: '2-digit', minute: '2-digit', hour12: false,
+        timeZone: 'America/New_York', month: 'short', day: 'numeric',
       });
-      ctx.fillText(label + ' ET', x, H - 8);
-    });
-  }, [chartPoints]);
+      ctx.fillText(label, x, H - 8);
+    }
+  }, [chartPoints, isUp]);
 
-  // Blinking dot animation on overlay canvas
+  // Blinking dot
   useEffect(() => {
     if (chartPoints.length < 2) return;
     let animFrame;
@@ -176,23 +178,14 @@ export default function Dashboard() {
       ctx.clearRect(0, 0, dotCanvas.width, dotCanvas.height);
       if (pt) {
         const pulse = (Math.sin(Date.now() / 500) + 1) / 2;
-        // Outer pulsing ring
-        const outerRadius = 8 + pulse * 12;
-        const outerOpacity = 0.6 - pulse * 0.6;
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, outerRadius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${pt.color}, ${outerOpacity})`;
+        ctx.arc(pt.x, pt.y, 8 + pulse * 12, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${pt.color}, ${0.6 - pulse * 0.6})`;
         ctx.fill();
-        // Middle colored ring
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${pt.color}, 1)`;
-        ctx.fill();
-        // White center dot
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${pt.color}, 1)`; ctx.fill();
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff'; ctx.fill();
       }
       animFrame = requestAnimationFrame(animate);
     };
@@ -216,321 +209,201 @@ export default function Dashboard() {
       } else {
         setSendStatus('Error sending');
       }
-    } catch {
-      setSendStatus('Error sending');
-    }
+    } catch { setSendStatus('Error sending'); }
     setTimeout(() => setSendStatus(''), 3000);
   }
 
-  const changeVal =
-    price && openPrice ? ((price - openPrice) / openPrice) * 100 : null;
-  const isUp = changeVal !== null && changeVal >= 0;
+  const themeGlow = isUp ? 'rgba(74,222,128,0.06)' : 'rgba(248,113,113,0.06)';
+  const themeAccent = isUp ? '#4ade80' : '#f87171';
 
   return (
     <Layout>
-      <div style={{ padding: '28px 24px', maxWidth: '900px' }}>
-        {/* Header */}
-        <div style={{ marginBottom: '28px' }}>
-          <h1 style={{ margin: 0, fontSize: '20px', color: '#a5b4fc' }}>
-            AAPL Market Dashboard
-          </h1>
+      <div style={{ padding: '0', minHeight: '100vh' }}>
+
+        {/* Hero section — full-width themed block */}
+        <div style={{
+          background: `radial-gradient(ellipse at 70% 40%, ${themeGlow} 0%, transparent 70%), #0a0a12`,
+          padding: '32px 28px 28px',
+          borderBottom: `1px solid ${isUp ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)'}`,
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          {/* Bull / Bear watermark */}
+          <div style={{
+            position: 'absolute', right: '20px', top: '50%',
+            transform: 'translateY(-50%)',
+            fontSize: '120px', opacity: 0.07,
+            userSelect: 'none', pointerEvents: 'none',
+          }}>
+            {isUp ? '🐂' : '🐻'}
+          </div>
+
+          {/* Top row */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '32px', flexWrap: 'wrap', marginBottom: '20px' }}>
+            <div>
+              <div style={{ fontSize: '12px', color: '#555', marginBottom: '6px', letterSpacing: '0.08em' }}>
+                AAPL — LIVE PRICE (VIX placeholder)
+              </div>
+              <div style={{ fontSize: '56px', fontWeight: 'bold', lineHeight: 1, color: '#fff' }}>
+                {price != null ? `$${price.toFixed(2)}` : '—'}
+              </div>
+            </div>
+
+            {/* 2-day % change — SMN style */}
+            <div style={{ paddingTop: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#444', marginBottom: '4px', letterSpacing: '0.08em' }}>
+                {isUp ? 'HIKE' : 'DROP'} · LAST 2 DAYS
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '13px', color: themeAccent }}>{isUp ? '▲' : '▼'}</span>
+                <span style={{
+                  fontSize: '40px', fontWeight: 'bold',
+                  color: themeAccent, fontVariantNumeric: 'tabular-nums',
+                }}>
+                  {animChange}%
+                </span>
+              </div>
+              {open2d != null && (
+                <div style={{ fontSize: '12px', color: '#444', marginTop: '4px' }}>
+                  2-day open: ${open2d.toFixed(2)}
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginLeft: 'auto', fontSize: '11px', color: '#2a2a4a', textAlign: 'right', paddingTop: '8px' }}>
+              {lastUpdated ? `Updated ${lastUpdated}` : 'Loading…'}
+              <br />Refreshes every 30s
+            </div>
+          </div>
+
+          {/* 2-day chart */}
+          <div style={{
+            background: 'rgba(10,10,18,0.6)',
+            borderRadius: '12px',
+            padding: '16px',
+            border: `1px solid ${isUp ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)'}`,
+          }}>
+            <div style={{ fontSize: '11px', color: '#333', marginBottom: '10px', letterSpacing: '0.06em' }}>
+              2-DAY CHART · 15-MIN BARS · EASTERN TIME
+            </div>
+            {chartPoints.length < 2 ? (
+              <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333', fontSize: '13px' }}>
+                {chartPoints.length === 0 ? 'Loading…' : 'Not enough data'}
+              </div>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                <canvas ref={canvasRef} width={860} height={260}
+                  style={{ width: '100%', display: 'block', borderRadius: '8px' }} />
+                <canvas ref={dotCanvasRef} width={860} height={260}
+                  style={{ width: '100%', display: 'block', borderRadius: '8px', position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Price card */}
-        <div
-          style={{
-            background: '#1a1a2e',
-            borderRadius: '14px',
-            padding: '28px',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'flex-end',
-            gap: '24px',
-            flexWrap: 'wrap',
-          }}
-        >
-          <div>
-            <div style={{ fontSize: '13px', color: '#555', marginBottom: '6px' }}>
-              AAPL — Live Price
-            </div>
-            <div style={{ fontSize: '52px', fontWeight: 'bold', lineHeight: 1 }}>
-              {price != null ? `$${price.toFixed(2)}` : '—'}
-            </div>
-          </div>
-          {changeVal !== null && (
-            <div
-              style={{
-                fontSize: '20px',
-                color: isUp ? '#4ade80' : '#f87171',
-                paddingBottom: '6px',
-              }}
-            >
-              {isUp ? '▲' : '▼'} {Math.abs(changeVal).toFixed(2)}% today
-            </div>
-          )}
-          {openPrice != null && (
-            <div style={{ fontSize: '13px', color: '#555', paddingBottom: '8px' }}>
-              Open: ${openPrice.toFixed(2)}
-            </div>
-          )}
-          <div
-            style={{
-              marginLeft: 'auto',
-              fontSize: '12px',
-              color: '#333',
-              paddingBottom: '8px',
-            }}
-          >
-            {lastUpdated ? `Updated ${lastUpdated}` : 'Loading…'}
-            <br />
-            Refreshes every 30s
-          </div>
-        </div>
+        {/* Telegram + Log section */}
+        <div style={{ padding: '24px 28px', maxWidth: '900px' }}>
 
-        {/* Chart */}
-        <div
-          style={{
-            background: '#1a1a2e',
-            borderRadius: '14px',
-            padding: '20px',
-            marginBottom: '20px',
-          }}
-        >
-          <div style={{ fontSize: '13px', color: '#555', marginBottom: '12px' }}>
-            Intraday Chart — 5-minute bars (Eastern Time)
-          </div>
-          {chartPoints.length < 2 ? (
-            <div
-              style={{
-                height: '280px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#333',
-                fontSize: '14px',
-              }}
-            >
-              {chartPoints.length === 0
-                ? 'Loading chart data…'
-                : 'Not enough data points yet'}
+          {/* Telegram send */}
+          <div style={{ background: '#0f0f1a', borderRadius: '14px', padding: '20px', marginBottom: '16px', border: '1px solid #1a1a2e' }}>
+            <div style={{ fontSize: '12px', color: '#444', marginBottom: '12px', letterSpacing: '0.06em' }}>
+              SEND TELEGRAM MESSAGE
             </div>
-          ) : (
-            <div style={{ position: 'relative' }}>
-              <canvas
-                ref={canvasRef}
-                width={880}
-                height={280}
-                style={{ width: '100%', display: 'block', borderRadius: '8px' }}
-              />
-              <canvas
-                ref={dotCanvasRef}
-                width={880}
-                height={280}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <input
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && sendTelegram()}
+                placeholder="Type a message and press Enter or Send…"
                 style={{
-                  width: '100%',
-                  display: 'block',
-                  borderRadius: '8px',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  pointerEvents: 'none',
+                  flex: 1, padding: '10px 14px',
+                  background: '#0a0a12', border: '1px solid #1e1e3a',
+                  borderRadius: '8px', color: '#fff',
+                  fontSize: '14px', fontFamily: 'monospace', outline: 'none',
                 }}
               />
+              <button onClick={sendTelegram} style={{
+                padding: '10px 22px', background: '#6366f1',
+                border: 'none', borderRadius: '8px', color: '#fff',
+                cursor: 'pointer', fontSize: '14px',
+                fontFamily: 'monospace', fontWeight: 'bold',
+              }}>
+                Send
+              </button>
             </div>
-          )}
-        </div>
-
-        {/* Telegram */}
-        <div
-          style={{
-            background: '#1a1a2e',
-            borderRadius: '14px',
-            padding: '20px',
-          }}
-        >
-          <div style={{ fontSize: '13px', color: '#555', marginBottom: '12px' }}>
-            Send Telegram Message
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && sendTelegram()}
-              placeholder="Type a message and press Enter or Send…"
-              style={{
-                flex: 1,
-                padding: '10px 14px',
-                background: '#0f0f1a',
-                border: '1px solid #2a2a4a',
-                borderRadius: '8px',
-                color: '#fff',
-                fontSize: '14px',
-                fontFamily: 'monospace',
-                outline: 'none',
-              }}
-            />
-            <button
-              onClick={sendTelegram}
-              style={{
-                padding: '10px 20px',
-                background: '#6366f1',
-                border: 'none',
-                borderRadius: '8px',
-                color: '#fff',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontFamily: 'monospace',
-                fontWeight: 'bold',
-              }}
-            >
-              Send
-            </button>
-          </div>
-          {sendStatus && (
-            <div style={{ marginTop: '8px', fontSize: '13px', color: '#888' }}>
-              {sendStatus}
-            </div>
-          )}
-        </div>
-
-        {/* Message Log */}
-        <div
-          style={{
-            background: '#1a1a2e',
-            borderRadius: '14px',
-            padding: '20px',
-            marginTop: '20px',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '16px',
-            }}
-          >
-            <div style={{ fontSize: '13px', color: '#555' }}>
-              Telegram Message Log
-            </div>
-            <div style={{ fontSize: '12px', color: '#333' }}>
-              {logEntries.length} message{logEntries.length !== 1 ? 's' : ''}
-            </div>
+            {sendStatus && (
+              <div style={{ marginTop: '8px', fontSize: '13px', color: '#888' }}>{sendStatus}</div>
+            )}
           </div>
 
-          {logEntries.length === 0 ? (
-            <div
-              style={{
-                textAlign: 'center',
-                color: '#333',
-                fontSize: '13px',
-                padding: '24px 0',
-              }}
-            >
-              No messages yet
+          {/* Message log */}
+          <div style={{ background: '#0f0f1a', borderRadius: '14px', padding: '20px', border: '1px solid #1a1a2e' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ fontSize: '12px', color: '#444', letterSpacing: '0.06em' }}>TELEGRAM MESSAGE LOG</div>
+              <div style={{ fontSize: '12px', color: '#333' }}>
+                {logEntries.length} message{logEntries.length !== 1 ? 's' : ''}
+              </div>
             </div>
-          ) : (
-            <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
-              {(() => {
-                const groups = [];
-                let lastDate = null;
-                logEntries.forEach((entry) => {
-                  const d = new Date(entry.timestamp);
-                  const dateKey = d.toLocaleDateString('en-GB', {
-                    weekday: 'short',
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                    timeZone: 'Asia/Jerusalem',
+
+            {logEntries.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#333', fontSize: '13px', padding: '24px 0' }}>
+                No messages yet
+              </div>
+            ) : (
+              <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
+                {(() => {
+                  const groups = [];
+                  let lastDate = null;
+                  logEntries.forEach((entry) => {
+                    const dateKey = new Date(entry.timestamp).toLocaleDateString('en-GB', {
+                      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+                      timeZone: 'Asia/Jerusalem',
+                    });
+                    if (dateKey !== lastDate) { groups.push({ date: dateKey, entries: [] }); lastDate = dateKey; }
+                    groups[groups.length - 1].entries.push(entry);
                   });
-                  if (dateKey !== lastDate) {
-                    groups.push({ date: dateKey, entries: [] });
-                    lastDate = dateKey;
-                  }
-                  groups[groups.length - 1].entries.push(entry);
-                });
-
-                return groups.map((group) => (
-                  <div key={group.date} style={{ marginBottom: '16px' }}>
-                    <div
-                      style={{
-                        fontSize: '11px',
-                        color: '#444',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.08em',
-                        marginBottom: '8px',
-                        borderBottom: '1px solid #1e1e3a',
-                        paddingBottom: '4px',
-                      }}
-                    >
-                      {group.date}
-                    </div>
-                    {group.entries.map((entry) => {
-                      const isScheduled = entry.type === 'scheduled';
-                      const time = new Date(entry.timestamp).toLocaleTimeString(
-                        'en-GB',
-                        {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          timeZone: 'Asia/Jerusalem',
-                        }
-                      );
-                      return (
-                        <div
-                          key={entry.id}
-                          style={{
-                            display: 'flex',
-                            gap: '10px',
-                            alignItems: 'flex-start',
-                            padding: '8px 10px',
-                            borderRadius: '8px',
-                            marginBottom: '4px',
-                            background: '#0f0f1a',
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: '11px',
-                              color: '#555',
-                              minWidth: '40px',
-                              paddingTop: '1px',
-                            }}
-                          >
-                            {time}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: '10px',
-                              padding: '2px 7px',
-                              borderRadius: '4px',
-                              background: isScheduled ? '#1e1e3a' : '#1a2e1a',
+                  return groups.map((group) => (
+                    <div key={group.date} style={{ marginBottom: '16px' }}>
+                      <div style={{
+                        fontSize: '11px', color: '#333', textTransform: 'uppercase',
+                        letterSpacing: '0.08em', marginBottom: '8px',
+                        borderBottom: '1px solid #1a1a2e', paddingBottom: '4px',
+                      }}>
+                        {group.date}
+                      </div>
+                      {group.entries.map((entry) => {
+                        const isScheduled = entry.type === 'scheduled';
+                        const time = new Date(entry.timestamp).toLocaleTimeString('en-GB', {
+                          hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem',
+                        });
+                        return (
+                          <div key={entry.id} style={{
+                            display: 'flex', gap: '10px', alignItems: 'flex-start',
+                            padding: '8px 10px', borderRadius: '8px',
+                            marginBottom: '4px', background: '#0a0a12',
+                          }}>
+                            <span style={{ fontSize: '11px', color: '#444', minWidth: '40px', paddingTop: '1px' }}>{time}</span>
+                            <span style={{
+                              fontSize: '10px', padding: '2px 7px', borderRadius: '4px',
+                              background: isScheduled ? '#1e1e3a' : '#0f1a0f',
                               color: isScheduled ? '#6366f1' : '#4ade80',
-                              whiteSpace: 'nowrap',
-                              minWidth: '90px',
-                              textAlign: 'center',
-                            }}
-                          >
-                            {entry.source}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: '12px',
-                              color: '#888',
-                              lineHeight: '1.5',
-                              whiteSpace: 'pre-line',
-                            }}
-                          >
-                            {entry.message}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ));
-              })()}
-            </div>
-          )}
+                              whiteSpace: 'nowrap', minWidth: '90px', textAlign: 'center',
+                            }}>
+                              {entry.source}
+                            </span>
+                            <span style={{ fontSize: '12px', color: '#666', lineHeight: '1.5', whiteSpace: 'pre-line' }}>
+                              {entry.message}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ));
+                })()}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Layout>
