@@ -162,16 +162,23 @@ export default function Dashboard() {
       const ctx = dotCanvas.getContext('2d');
       ctx.clearRect(0, 0, dotCanvas.width, dotCanvas.height);
       if (pt) {
-        const pulse = (Math.sin(Date.now() / 400) + 1) / 2;
-        const outerRadius = 5 + pulse * 9;
-        const outerOpacity = 0.55 - pulse * 0.55;
+        const pulse = (Math.sin(Date.now() / 500) + 1) / 2;
+        // Outer pulsing ring
+        const outerRadius = 8 + pulse * 12;
+        const outerOpacity = 0.6 - pulse * 0.6;
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, outerRadius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${pt.color}, ${outerOpacity})`;
         ctx.fill();
+        // Middle colored ring
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+        ctx.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${pt.color}, 1)`;
+        ctx.fill();
+        // White center dot
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
         ctx.fill();
       }
       animFrame = requestAnimationFrame(animate);
