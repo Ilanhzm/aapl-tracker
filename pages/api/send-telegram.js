@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   const { message } = req.body;
   if (!message?.trim()) return res.status(400).json({ error: 'Empty message' });
 
-  const botToken = process.env.TELEGRAM_TOKEN;
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
 
   try {
