@@ -14,6 +14,13 @@ export default function Layout({ children }) {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#0a0a12', fontFamily: 'monospace', color: '#fff' }}>
+      <style>{`
+        @keyframes pulse-red {
+          0%, 100% { color: #ff6b6b; }
+          50% { color: #7a1a1a; }
+        }
+        .nav-blink { animation: pulse-red 1.4s ease-in-out infinite; }
+      `}</style>
       {/* Left sidebar */}
       <div style={{
         width: '160px',
@@ -35,17 +42,20 @@ export default function Layout({ children }) {
         <nav style={{ flex: 1 }}>
           {NAV.map(({ href, label }) => {
             const active = pathname === href;
+            const isLiveTrades = href === '/live-trades';
             return (
-              <Link key={href} href={href} style={{
-                display: 'block',
-                padding: '12px 16px',
-                fontSize: '12px',
-                color: active ? '#fff' : '#555',
-                textDecoration: 'none',
-                background: active ? '#1a1a2e' : 'transparent',
-                borderLeft: active ? '3px solid #e53e3e' : '3px solid transparent',
-                transition: 'all 0.15s',
-              }}>
+              <Link key={href} href={href}
+                className={!active && isLiveTrades ? 'nav-blink' : undefined}
+                style={{
+                  display: 'block',
+                  padding: '12px 16px',
+                  fontSize: '12px',
+                  color: active ? '#fff' : '#888',
+                  textDecoration: 'none',
+                  background: active ? '#1a1a2e' : 'transparent',
+                  borderLeft: active ? '3px solid #e53e3e' : '3px solid transparent',
+                  transition: 'color 0.15s',
+                }}>
                 {label}
               </Link>
             );

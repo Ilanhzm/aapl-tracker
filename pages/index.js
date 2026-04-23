@@ -250,7 +250,7 @@ export default function Dashboard() {
           {/* Top row */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '32px', flexWrap: 'wrap', marginBottom: '20px' }}>
             <div>
-              <div style={{ fontSize: '12px', color: '#555', marginBottom: '6px', letterSpacing: '0.08em' }}>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px', letterSpacing: '0.08em' }}>
                 AAPL — LIVE PRICE (VIX placeholder)
               </div>
               <div style={{ fontSize: '56px', fontWeight: 'bold', lineHeight: 1, color: '#fff' }}>
@@ -260,7 +260,7 @@ export default function Dashboard() {
 
             {/* 2-day % change — SMN style */}
             <div style={{ paddingTop: '12px' }}>
-              <div style={{ fontSize: '11px', color: '#444', marginBottom: '4px', letterSpacing: '0.08em' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px', letterSpacing: '0.08em' }}>
                 {isUp ? 'HIKE' : 'DROP'} · LAST 2 DAYS
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -273,13 +273,13 @@ export default function Dashboard() {
                 </span>
               </div>
               {open2d != null && (
-                <div style={{ fontSize: '12px', color: '#444', marginTop: '4px' }}>
+                <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
                   2-day open: ${open2d.toFixed(2)}
                 </div>
               )}
             </div>
 
-            <div style={{ marginLeft: 'auto', fontSize: '11px', color: '#2a2a4a', textAlign: 'right', paddingTop: '8px' }}>
+            <div style={{ marginLeft: 'auto', fontSize: '11px', color: '#555', textAlign: 'right', paddingTop: '8px' }}>
               {lastUpdated ? `Updated ${lastUpdated}` : 'Loading…'}
               <br />Refreshes every 30s
             </div>
@@ -292,7 +292,7 @@ export default function Dashboard() {
             padding: '16px',
             border: `1px solid ${isUp ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)'}`,
           }}>
-            <div style={{ fontSize: '11px', color: '#333', marginBottom: '10px', letterSpacing: '0.06em' }}>
+            <div style={{ fontSize: '11px', color: '#666', marginBottom: '10px', letterSpacing: '0.06em' }}>
               2-DAY CHART · 15-MIN BARS · EASTERN TIME
             </div>
             {chartPoints.length < 2 ? (
@@ -315,7 +315,7 @@ export default function Dashboard() {
 
           {/* Telegram send */}
           <div style={{ background: '#0f0f1a', borderRadius: '14px', padding: '20px', marginBottom: '16px', border: '1px solid #1a1a2e' }}>
-            <div style={{ fontSize: '12px', color: '#444', marginBottom: '12px', letterSpacing: '0.06em' }}>
+            <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px', letterSpacing: '0.06em' }}>
               SEND TELEGRAM MESSAGE
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -349,14 +349,14 @@ export default function Dashboard() {
           {/* Message log */}
           <div style={{ background: '#0f0f1a', borderRadius: '14px', padding: '20px', border: '1px solid #1a1a2e' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', color: '#444', letterSpacing: '0.06em' }}>TELEGRAM MESSAGE LOG</div>
-              <div style={{ fontSize: '12px', color: '#333' }}>
+              <div style={{ fontSize: '12px', color: '#888', letterSpacing: '0.06em' }}>TELEGRAM MESSAGE LOG</div>
+              <div style={{ fontSize: '12px', color: '#666' }}>
                 {logEntries.length} message{logEntries.length !== 1 ? 's' : ''}
               </div>
             </div>
 
             {logEntries.length === 0 ? (
-              <div style={{ textAlign: 'center', color: '#333', fontSize: '13px', padding: '24px 0' }}>
+              <div style={{ textAlign: 'center', color: '#666', fontSize: '13px', padding: '24px 0' }}>
                 No messages yet
               </div>
             ) : (
@@ -375,7 +375,7 @@ export default function Dashboard() {
                   return groups.map((group) => (
                     <div key={group.date} style={{ marginBottom: '16px' }}>
                       <div style={{
-                        fontSize: '11px', color: '#333', textTransform: 'uppercase',
+                        fontSize: '11px', color: '#666', textTransform: 'uppercase',
                         letterSpacing: '0.08em', marginBottom: '8px',
                         borderBottom: '1px solid #1a1a2e', paddingBottom: '4px',
                       }}>
@@ -392,7 +392,7 @@ export default function Dashboard() {
                             padding: '8px 10px', borderRadius: '8px',
                             marginBottom: '4px', background: '#0a0a12',
                           }}>
-                            <span style={{ fontSize: '11px', color: '#444', minWidth: '40px', paddingTop: '1px' }}>{time}</span>
+                            <span style={{ fontSize: '11px', color: '#777', minWidth: '40px', paddingTop: '1px' }}>{time}</span>
                             <span style={{
                               fontSize: '10px', padding: '2px 7px', borderRadius: '4px',
                               background: isScheduled ? '#1e1e3a' : '#0f1a0f',
@@ -401,7 +401,7 @@ export default function Dashboard() {
                             }}>
                               {entry.source}
                             </span>
-                            <span style={{ fontSize: '12px', color: '#666', lineHeight: '1.5', whiteSpace: 'pre-line' }}>
+                            <span style={{ fontSize: '12px', color: '#ccc', lineHeight: '1.5', whiteSpace: 'pre-line' }}>
                               {entry.message}
                             </span>
                           </div>
