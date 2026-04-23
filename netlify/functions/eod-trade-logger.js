@@ -1,7 +1,7 @@
 const { schedule } = require('@netlify/functions');
 const { addLogEntry } = require('./_log');
+const { getOptionQuotes, midPrice } = require('./_tradier');
 
-// Count N trading days (Mon-Fri) forward from a date string
 function addTradingDays(dateStr, days) {
   const date = new Date(dateStr + 'T12:00:00Z');
   let count = 0;
@@ -57,16 +57,13 @@ exports.handler = schedule('0 21 * * 1-5', async () => {
     const tradesRes = await fetch(`${siteUrl}/api/trades`, {
       headers: { 'x-log-secret': secret },
     });
-
-    // For EOD logger reading trades, use the secret as a bypass
-    // (We'll handle this by making trades GET also accept x-log-secret)
     let trades = [];
     try {
       const tradesData = await tradesRes.json();
       trades = tradesData.trades || [];
     } catch {}
 
-    // --- Step 1: Check for new spike today ---
+    // --- Step 1: Create trade(s) if there was a spike today ---
     let entryPoint = null;
     for (const pt of points) {
       if (pt.price >= hikeTarget) { entryPoint = pt; break; }
@@ -81,8 +78,19 @@ exports.handler = schedule('0 21 * * 1-5', async () => {
         hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York', hour12: false,
       });
 
-      trades.push({
-        id: Date.now(),
+      // Read option data saved by spike-detector at spike time
+      let optionData = null;
+      let optionExpiration = null;
+      try {
+        const spikeRes = await fetch(`${siteUrl}/api/spike-status`);
+        const spikeStatus = await spikeRes.json();
+        if (spikeStatus.date === today) {
+          optionData = spikeStatus.optionData || null;
+          optionExpiration = spikeStatus.optionExpiration || null;
+        }
+      } catch {}
+
+      const baseFields = {
         triggerDate: today,
         triggerTime: entryTime,
         pctMove: parseFloat(pctMove),
@@ -93,46 +101,69 @@ exports.handler = schedule('0 21 * * 1-5', async () => {
         exitDate: null,
         exitReason: null,
         daysHeld: null,
-        // Phase 2 fields
-        optionStrike: null,
-        optionExpiration: null,
-        entryOptionPrice: null,
         exitOptionPrice: null,
         tradeReturn: null,
-      });
+      };
 
-      await addLogEntry(
-        `Trade logged — ${tickerDisplay} spike +${pctMove}% at ${entryTime} ET. Reversion target: ${reversionTarget.toFixed(2)}. Expires: ${expirationDate}`,
-        'scheduled',
-        'EOD trade logger'
-      );
+      if (optionData && optionData.length > 0) {
+        // Phase 2: one trade record per option leg
+        optionData.forEach((opt, i) => {
+          trades.push({
+            ...baseFields,
+            id: Date.now() + i,
+            optionLabel: opt.label,
+            optionStrike: opt.strike,
+            optionExpiration,
+            optionSymbol: opt.symbol,
+            entryOptionPrice: opt.entryMid,
+          });
+        });
+        await addLogEntry(
+          `${optionData.length} trades logged — ${tickerDisplay} spike +${pctMove}% at ${entryTime} ET. Options: ${optionData.map((o) => `${o.label} $${o.strike}P @ $${o.entryMid}`).join(', ')}. Expires: ${expirationDate}`,
+          'scheduled',
+          'EOD trade logger'
+        );
+      } else {
+        // Phase 1 fallback: single trade without option data
+        trades.push({
+          ...baseFields,
+          id: Date.now(),
+          optionLabel: null,
+          optionStrike: null,
+          optionExpiration: null,
+          optionSymbol: null,
+          entryOptionPrice: null,
+        });
+        await addLogEntry(
+          `Trade logged — ${tickerDisplay} spike +${pctMove}% at ${entryTime} ET. Reversion target: ${reversionTarget.toFixed(2)}. Expires: ${expirationDate} (no option data)`,
+          'scheduled',
+          'EOD trade logger'
+        );
+      }
     }
 
-    // --- Step 2: Update open trades ---
+    // --- Step 2: Close trades that have reverted or expired ---
+    // First pass: determine which trades need closing
     trades = trades.map((trade) => {
       if (trade.status !== 'OPEN') return trade;
 
-      // Check expiration
       if (today >= trade.expirationDate) {
         return {
           ...trade,
-          status: 'CLOSED',
+          _closing: true,
           exitDate: trade.expirationDate,
           exitReason: 'Expired',
           daysHeld: countTradingDaysBetween(trade.triggerDate, trade.expirationDate),
         };
       }
 
-      // Check reversion against today's candles (only candles after entry)
-      const entryTime = new Date(`${trade.triggerDate}T${trade.triggerTime}:00`).getTime();
-      const reverted = points.some(
-        (pt) => pt.time > entryTime && pt.price <= trade.reversionTarget
-      );
+      const entryMs = new Date(`${trade.triggerDate}T${trade.triggerTime}:00`).getTime();
+      const reverted = points.some((pt) => pt.time > entryMs && pt.price <= trade.reversionTarget);
 
       if (reverted) {
         return {
           ...trade,
-          status: 'CLOSED',
+          _closing: true,
           exitDate: today,
           exitReason: 'Reverted',
           daysHeld: countTradingDaysBetween(trade.triggerDate, today),
@@ -142,7 +173,51 @@ exports.handler = schedule('0 21 * * 1-5', async () => {
       return trade;
     });
 
-    // Save updated trades
+    // Second pass: fetch exit option prices for closing trades
+    const closingWithOptions = trades.filter((t) => t._closing && t.optionSymbol);
+    if (closingWithOptions.length > 0) {
+      try {
+        const symbols = closingWithOptions.map((t) => t.optionSymbol);
+        const quotes = await getOptionQuotes(symbols);
+        const priceMap = {};
+        for (const q of quotes) {
+          priceMap[q.symbol] = midPrice(q);
+        }
+
+        trades = trades.map((t) => {
+          if (!t._closing || !t.optionSymbol) return t;
+          const exitMid = priceMap[t.optionSymbol] ?? null;
+          const tradeReturn = t.entryOptionPrice && exitMid !== null
+            ? +((exitMid - t.entryOptionPrice) / t.entryOptionPrice * 100).toFixed(1)
+            : null;
+          const { _closing, ...rest } = t;
+          return { ...rest, status: 'CLOSED', exitOptionPrice: exitMid, tradeReturn };
+        });
+
+        await addLogEntry(
+          `Closed ${closingWithOptions.length} trade(s) with option exit prices`,
+          'scheduled',
+          'EOD trade logger'
+        );
+      } catch (err) {
+        console.error('Exit option fetch failed:', err.message);
+        // Still close the trades, just without option P&L
+        trades = trades.map((t) => {
+          if (!t._closing) return t;
+          const { _closing, ...rest } = t;
+          return { ...rest, status: 'CLOSED' };
+        });
+      }
+    } else {
+      // No option data to fetch — just finalize closes
+      trades = trades.map((t) => {
+        if (!t._closing) return t;
+        const { _closing, ...rest } = t;
+        return { ...rest, status: 'CLOSED' };
+      });
+    }
+
+    // Save all trades
     await fetch(`${siteUrl}/api/trades`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-log-secret': secret },
