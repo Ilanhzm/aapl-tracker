@@ -44,3 +44,16 @@ The daily script will run as a Netlify Scheduled Function.
 
 - Daily run confirmed. At what time exactly? (e.g. 30 min after market close = 4:30 PM ET?)
 - Does it look back exactly 1 day of 1-min candles, or a rolling window?
+
+---
+
+## 6. Phase 2 — Real Option Prices via IBKR (FUTURE)
+
+Phase 1 of the tracker skips option pricing entirely and only validates whether VIX reverts after a spike.
+
+Phase 2 requires:
+- Opening an IBKR account
+- Subscribing to OPRA L1 ($1.5/mo) + Cboe Streaming Market Indexes ($3.5/mo)
+- Connecting via IBKR Client Portal Web API (works from Netlify without a local desktop session)
+- Fetching real PUT prices at entry and exit to calculate actual P&L per trade
+- Revisiting strike selection formula: `([Current VIX] - [PUT cost] - [Reversion price]) / [PUT cost]` (see Q1)
