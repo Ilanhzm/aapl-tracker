@@ -30,10 +30,12 @@ export default function Layout({ children }) {
           padding: 0 32px; gap: 0;
         }
         .nav-logo {
-          font-family: var(--font-display); font-size: 19px; font-weight: 800;
-          color: var(--indigo); letter-spacing: -0.03em;
+          display: flex; align-items: center;
           user-select: none; flex-shrink: 0; margin-right: 40px;
           text-decoration: none;
+        }
+        .nav-logo img {
+          height: 32px; width: auto; display: block;
         }
         .nav-links {
           flex: 1; display: flex; align-items: center; justify-content: center; gap: 2px;
@@ -64,7 +66,9 @@ export default function Layout({ children }) {
       `}</style>
 
       <nav className="topnav">
-        <span className="nav-logo">VIXit</span>
+        <a href="/" className="nav-logo">
+          <img src="/logo.png" alt="VIXit" />
+        </a>
 
         <div className="nav-links">
           {NAV.map(({ href, label, pulse }) => {

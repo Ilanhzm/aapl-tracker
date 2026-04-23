@@ -61,14 +61,11 @@ export default function Login() {
       }}>
         {/* Brand */}
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-          <div style={{
-            fontFamily: 'var(--font-display)', fontSize: '40px', fontWeight: 800,
-            color: 'var(--text-1)', letterSpacing: '-0.04em', lineHeight: 1,
-            marginBottom: '10px',
-            textShadow: '0 0 40px rgba(124,140,248,0.3)',
-          }}>
-            VIXit
-          </div>
+          <img
+            src="/logo.png"
+            alt="VIXit"
+            style={{ height: '56px', width: 'auto', marginBottom: '14px', filter: 'drop-shadow(0 0 20px rgba(0,232,122,0.2))' }}
+          />
           <div style={{ fontSize: '14px', color: 'var(--text-3)', fontFamily: 'var(--font-body)' }}>
             Volatility intelligence, simplified.
           </div>
