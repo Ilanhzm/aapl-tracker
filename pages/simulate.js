@@ -1,6 +1,7 @@
 import { getSession } from 'next-auth/react';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
+import Odometer from '../components/Odometer';
 
 export async function getServerSideProps(ctx) {
   const session = await getSession({ req: ctx.req });
@@ -8,7 +9,11 @@ export async function getServerSideProps(ctx) {
   return { props: {} };
 }
 
-// Slot machine number animation
+// Logarithmic scale: slider 0–100 maps to VIX 5–80
+function sliderToVIX(s) { return Math.round(5 * Math.pow(16, s / 100)); }
+function vixToSlider(vix) { return Math.round(100 * Math.log(vix / 5) / Math.log(16)); }
+
+// Slot machine number animation (used for results panel)
 function useSMN(target, duration = 1200) {
   const [display, setDisplay] = useState(null);
   const rafRef = useRef(null);
@@ -16,13 +21,12 @@ function useSMN(target, duration = 1200) {
   useEffect(() => {
     if (target === null) { setDisplay(null); return; }
     const start = Date.now();
-    const startVal = 0;
     const endVal = target;
     const tick = () => {
       const elapsed = Date.now() - start;
       const progress = Math.min(elapsed / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
-      const current = startVal + (endVal - startVal) * eased;
+      const current = endVal * eased;
       setDisplay(current.toFixed(1));
       if (progress < 1) rafRef.current = requestAnimationFrame(tick);
     };
@@ -34,16 +38,20 @@ function useSMN(target, duration = 1200) {
 }
 
 export default function SimulateHike() {
-  const [startPrice, setStartPrice] = useState(15);
-  const [endPrice, setEndPrice] = useState(25);
-  const [step, setStep] = useState(1); // 1=picking start, 2=picking end, 3=ready, 4=results
+  // Slider internal state: 0–100 logarithmic scale
+  const [startSlider, setStartSlider] = useState(vixToSlider(15)); // ~40
+  const [endSlider, setEndSlider] = useState(vixToSlider(25));     // ~58
+  const [step, setStep] = useState(1);
   const [result, setResult] = useState(null);
   const [calculating, setCalculating] = useState(false);
   const [gaugeAngle, setGaugeAngle] = useState(-90);
   const canvasRef = useRef(null);
 
+  // Derived VIX prices from slider positions
+  const startPrice = sliderToVIX(startSlider);
+  const endPrice = sliderToVIX(endSlider);
+
   const jumpPct = endPrice > startPrice ? (((endPrice - startPrice) / startPrice) * 100) : 0;
-  const animJump = useSMN(step >= 3 ? jumpPct : null);
   const animProb = useSMN(step === 4 && result ? result.probability : null, 1800);
   const animFreq = useSMN(step === 4 && result ? (result.instances > 0 ? Math.round(result.totalDays / result.instances) : 0) : null, 1800);
 
@@ -62,11 +70,9 @@ export default function SimulateHike() {
     const H = cssH;
     ctx.clearRect(0, 0, W, H);
 
-    // Dark background
     ctx.fillStyle = '#0a0a12';
     ctx.fillRect(0, 0, W, H);
 
-    // Grid lines
     ctx.strokeStyle = '#1a1a2e';
     ctx.lineWidth = 1;
     for (let i = 0; i <= 4; i++) {
@@ -76,7 +82,6 @@ export default function SimulateHike() {
 
     if (step < 3) return;
 
-    // Climbing curve
     const padX = 40;
     const padY = 20;
     const plotH = H - padY * 2;
@@ -92,12 +97,10 @@ export default function SimulateHike() {
     const endX = W - padX;
     const midX = (startX + endX) / 2;
 
-    // Gradient fill
     const grad = ctx.createLinearGradient(0, endY, 0, startY + 20);
     grad.addColorStop(0, 'rgba(74, 222, 128, 0.3)');
     grad.addColorStop(1, 'rgba(74, 222, 128, 0.02)');
 
-    // Bezier curve
     ctx.beginPath();
     ctx.moveTo(startX, startY);
     ctx.bezierCurveTo(midX, startY, midX, endY, endX, endY);
@@ -105,7 +108,6 @@ export default function SimulateHike() {
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Fill under
     ctx.beginPath();
     ctx.moveTo(startX, startY);
     ctx.bezierCurveTo(midX, startY, midX, endY, endX, endY);
@@ -115,19 +117,16 @@ export default function SimulateHike() {
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Start dot
     ctx.beginPath();
     ctx.arc(startX, startY, 5, 0, Math.PI * 2);
     ctx.fillStyle = '#4ade80';
     ctx.fill();
 
-    // End dot
     ctx.beginPath();
     ctx.arc(endX, endY, 5, 0, Math.PI * 2);
     ctx.fillStyle = '#fff';
     ctx.fill();
 
-    // Price labels
     ctx.fillStyle = '#4ade80';
     ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'left';
@@ -140,7 +139,6 @@ export default function SimulateHike() {
   // Gauge animation
   useEffect(() => {
     if (step !== 4 || !result) return;
-    const target = -90 + (result.probability / 100) * 180;
     let start = null;
     const animate = (ts) => {
       if (!start) start = ts;
@@ -168,8 +166,8 @@ export default function SimulateHike() {
   function reset() {
     setStep(1);
     setResult(null);
-    setStartPrice(15);
-    setEndPrice(25);
+    setStartSlider(vixToSlider(15));
+    setEndSlider(vixToSlider(25));
     setGaugeAngle(-90);
   }
 
@@ -182,7 +180,6 @@ export default function SimulateHike() {
   return (
     <Layout>
       <div style={{ padding: '32px 28px', maxWidth: '900px' }}>
-        {/* Header */}
         <div style={{ marginBottom: '28px' }}>
           <h1 style={{ margin: 0, fontSize: '20px', color: '#fff', letterSpacing: '0.05em' }}>
             SIMULATE <span style={{ color: '#e53e3e' }}>HIKE</span>
@@ -231,15 +228,16 @@ export default function SimulateHike() {
               color: step >= 1 ? '#fff' : '#333',
               minWidth: '36px', textAlign: 'center',
             }}>
-              {startPrice.toFixed(0)}
+              {startPrice}
             </div>
             <input
-              type="range" min="5" max="80" step="1"
-              value={startPrice}
+              type="range" min="0" max="100" step="1"
+              value={startSlider}
               onChange={(e) => {
-                const v = parseFloat(e.target.value);
-                setStartPrice(v);
-                if (endPrice <= v) setEndPrice(v + 5);
+                const s = parseInt(e.target.value);
+                setStartSlider(s);
+                const newStart = sliderToVIX(s);
+                if (endPrice <= newStart) setEndSlider(Math.min(100, s + 8));
                 if (step === 1) setStep(2);
                 if (step >= 3) setStep(3);
                 setResult(null);
@@ -259,7 +257,6 @@ export default function SimulateHike() {
 
           {/* Chart area */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {/* Tooltip */}
             {step === 1 && (
               <div style={{
                 background: '#1a1a2e', border: '1px solid #e53e3e',
@@ -283,11 +280,12 @@ export default function SimulateHike() {
                 background: '#0f1a0f', border: '1px solid #4ade80',
                 borderRadius: '8px', padding: '10px 14px',
                 fontSize: '12px', color: '#4ade80', textAlign: 'center',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
               }}>
                 2-day hike:&nbsp;
-                <span style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                  +{animJump}%
-                </span>
+                <span style={{ fontWeight: 'bold' }}>+</span>
+                <Odometer value={jumpPct.toFixed(1)} fontSize={18} color="#4ade80" />
+                <span style={{ fontWeight: 'bold', fontSize: '18px' }}>%</span>
               </div>
             )}
             {step === 4 && (
@@ -319,9 +317,7 @@ export default function SimulateHike() {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                   <div style={{ fontSize: '11px', color: '#555' }}>Your reversion probability</div>
                   <svg width="140" height="80" viewBox="0 0 140 80">
-                    {/* Background arc */}
                     <path d="M 10 75 A 60 60 0 0 1 130 75" fill="none" stroke="#1e1e3a" strokeWidth="10" strokeLinecap="round" />
-                    {/* Colored arc */}
                     <path
                       d="M 10 75 A 60 60 0 0 1 130 75"
                       fill="none"
@@ -330,7 +326,6 @@ export default function SimulateHike() {
                       strokeLinecap="round"
                       strokeDasharray={`${Math.PI * 60 * (result.probability / 100)} ${Math.PI * 60}`}
                     />
-                    {/* Needle */}
                     <line
                       x1="70" y1="75"
                       x2={70 + 48 * Math.cos((gaugeAngle * Math.PI) / 180)}
@@ -376,14 +371,16 @@ export default function SimulateHike() {
               color: step >= 2 ? '#fff' : '#333',
               minWidth: '36px', textAlign: 'center',
             }}>
-              {endPrice.toFixed(0)}
+              {endPrice}
             </div>
             <input
-              type="range" min="5" max="80" step="1"
-              value={endPrice}
+              type="range" min="0" max="100" step="1"
+              value={endSlider}
               onChange={(e) => {
-                const v = Math.max(parseFloat(e.target.value), startPrice + 1);
-                setEndPrice(v);
+                const s = parseInt(e.target.value);
+                const newEnd = sliderToVIX(s);
+                if (newEnd <= startPrice) return;
+                setEndSlider(s);
                 if (step === 2) setStep(3);
                 if (step >= 3) setStep(3);
                 setResult(null);

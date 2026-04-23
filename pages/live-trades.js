@@ -13,15 +13,52 @@ function MatrixYoga() {
     canvas.height = H;
     const ctx = canvas.getContext('2d');
 
-    // Render yoga emoji to offscreen canvas to get silhouette mask
+    // Draw meditation figure programmatically to offscreen canvas
     const off = document.createElement('canvas');
     off.width = W; off.height = H;
     const offCtx = off.getContext('2d');
-    offCtx.font = `${H * 0.78}px serif`;
-    offCtx.textAlign = 'center';
-    offCtx.textBaseline = 'middle';
     offCtx.fillStyle = 'white';
-    offCtx.fillText('🧘', W / 2, H / 2 + 10);
+
+    const cx = W / 2;
+
+    // Head
+    offCtx.beginPath();
+    offCtx.arc(cx, 60, 28, 0, Math.PI * 2);
+    offCtx.fill();
+
+    // Neck
+    offCtx.fillRect(cx - 7, 86, 14, 16);
+
+    // Torso
+    offCtx.beginPath();
+    offCtx.ellipse(cx, 148, 30, 50, 0, 0, Math.PI * 2);
+    offCtx.fill();
+
+    // Left arm (out and slightly downward — hands resting on knees)
+    offCtx.beginPath();
+    offCtx.ellipse(cx - 64, 142, 46, 14, 0.15, 0, Math.PI * 2);
+    offCtx.fill();
+
+    // Right arm
+    offCtx.beginPath();
+    offCtx.ellipse(cx + 64, 142, 46, 14, -0.15, 0, Math.PI * 2);
+    offCtx.fill();
+
+    // Cross-legged base
+    offCtx.beginPath();
+    offCtx.ellipse(cx, 228, 80, 40, 0, 0, Math.PI * 2);
+    offCtx.fill();
+
+    // Left knee bump
+    offCtx.beginPath();
+    offCtx.ellipse(cx - 52, 240, 20, 14, -0.3, 0, Math.PI * 2);
+    offCtx.fill();
+
+    // Right knee bump
+    offCtx.beginPath();
+    offCtx.ellipse(cx + 52, 240, 20, 14, 0.3, 0, Math.PI * 2);
+    offCtx.fill();
+
     const imgData = offCtx.getImageData(0, 0, W, H);
 
     function alpha(x, y) {
@@ -30,13 +67,14 @@ function MatrixYoga() {
       return imgData.data[(yi * W + xi) * 4 + 3];
     }
 
-    const chars = 'アイウエオカキクサシスタチツテ01234567ナニヌ9#@';
+    const chars = '0123456789';
     const fs = 11;
     const cols = Math.floor(W / fs);
     const drops = Array.from({ length: cols }, () => -Math.random() * H * 1.5);
 
     function draw() {
-      ctx.fillStyle = 'rgba(0,0,0,0.045)';
+      // Match page background #0a0a12 = rgb(10,10,18) for seamless blending
+      ctx.fillStyle = 'rgba(10,10,18,0.07)';
       ctx.fillRect(0, 0, W, H);
       ctx.font = `${fs}px monospace`;
 
@@ -44,18 +82,18 @@ function MatrixYoga() {
         const x = i * fs + fs / 2;
         const y = drops[i];
         const a = alpha(x, y);
-        const inBody = a > 80;
+        const inBody = a > 60;
         const char = chars[Math.floor(Math.random() * chars.length)];
 
         if (inBody) {
-          // Head of column inside silhouette → white
-          ctx.fillStyle = `rgba(220,255,220,${0.6 + (a / 255) * 0.4})`;
+          const brightness = 0.55 + (a / 255) * 0.45;
+          ctx.fillStyle = `rgba(180,255,180,${brightness})`;
           ctx.fillText(char, x, y);
-          // Bright leading dot
-          ctx.fillStyle = 'rgba(255,255,255,0.95)';
+          // Bright leading digit
+          ctx.fillStyle = 'rgba(255,255,255,0.92)';
           ctx.fillText(char, x, y);
         } else {
-          ctx.fillStyle = 'rgba(0,140,0,0.45)';
+          ctx.fillStyle = 'rgba(0,160,0,0.38)';
           ctx.fillText(char, x, y);
         }
 
@@ -71,7 +109,7 @@ function MatrixYoga() {
   return (
     <canvas
       ref={canvasRef}
-      style={{ width: '260px', height: '300px', borderRadius: '12px', opacity: 0.9 }}
+      style={{ width: '260px', height: '300px', borderRadius: '12px', opacity: 0.92 }}
     />
   );
 }
