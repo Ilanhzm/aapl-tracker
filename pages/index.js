@@ -124,27 +124,27 @@ export default function Dashboard() {
     const toX = (t) => pad.left + ((t - tMin) / tRange) * (W - pad.left - pad.right);
     const toY = (p) => H - pad.bottom - ((p - minP) / pRange) * (H - pad.top - pad.bottom);
 
-    ctx.fillStyle = '#0a0a12';
+    ctx.fillStyle = '#07080f';
     ctx.fillRect(0, 0, W, H);
 
-    const lineColor = isUp ? '74,222,128' : '248,113,113';
+    const lineColor = isUp ? '34,212,123' : '240,81,94';
 
     // Grid lines
     for (let i = 0; i <= 5; i++) {
       const y = pad.top + (i / 5) * (H - pad.top - pad.bottom);
       const pVal = maxP - (i / 5) * pRange;
-      ctx.strokeStyle = '#1a1a2e';
+      ctx.strokeStyle = '#1a1d35';
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
-      ctx.fillStyle = '#444';
-      ctx.font = '11px monospace';
+      ctx.fillStyle = '#404659';
+      ctx.font = '11px "DM Mono", monospace';
       ctx.textAlign = 'right';
-      ctx.fillText('$' + pVal.toFixed(2), pad.left - 6, y + 4);
+      ctx.fillText(pVal.toFixed(2), pad.left - 6, y + 4);
     }
 
     // Gradient fill
     const grad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
-    grad.addColorStop(0, `rgba(${lineColor},0.3)`);
+    grad.addColorStop(0, `rgba(${lineColor},0.25)`);
     grad.addColorStop(1, `rgba(${lineColor},0.0)`);
 
     const lastPt = chartPoints[chartPoints.length - 1];
@@ -172,9 +172,9 @@ export default function Dashboard() {
 
     lastPointRef.current = { x: toX(lastPt.time), y: toY(lastPt.price), color: lineColor };
 
-    // Time labels — show day boundaries
-    ctx.fillStyle = '#444';
-    ctx.font = '11px monospace';
+    // Time labels
+    ctx.fillStyle = '#404659';
+    ctx.font = '11px "DM Mono", monospace';
     ctx.textAlign = 'center';
     const labelCount = 5;
     for (let i = 0; i <= labelCount; i++) {
@@ -237,43 +237,78 @@ export default function Dashboard() {
     setTimeout(() => setSendStatus(''), 3000);
   }
 
-  const themeGlow = isUp ? 'rgba(74,222,128,0.06)' : 'rgba(248,113,113,0.06)';
-  const themeAccent = isUp ? '#4ade80' : '#f87171';
+  const themeAccent = isUp ? 'var(--green)' : 'var(--red)';
+  const themeGlowRgb = isUp ? '34,212,123' : '240,81,94';
+  const spikeActive = spikeData?.alerted;
 
   return (
     <Layout>
+      <style>{`
+        @keyframes blink-spike { 0%,100%{opacity:1} 50%{opacity:0.2} }
+        @keyframes spike-glow {
+          0%,100% { box-shadow: 0 0 0 0 rgba(240,81,94,0); }
+          50%      { box-shadow: 0 0 32px 4px rgba(240,81,94,0.18); }
+        }
+        .panel-card {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 14px;
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .tg-send-btn {
+          padding: 10px 22px;
+          background: var(--indigo);
+          border: none; border-radius: 8px;
+          color: #fff; cursor: pointer;
+          font-family: var(--font-display); font-size: 13px; font-weight: 700;
+          transition: filter 0.2s, box-shadow 0.2s, transform 0.12s;
+          white-space: nowrap;
+        }
+        .tg-send-btn:hover { filter: brightness(1.15); box-shadow: 0 0 18px rgba(108,126,248,0.35); }
+        .tg-send-btn:active { transform: scale(0.96); }
+        .tg-input {
+          flex: 1; padding: 10px 14px;
+          background: var(--surface-2); border: 1px solid var(--border);
+          border-radius: 8px; color: var(--text-1);
+          font-family: var(--font-body); font-size: 14px; outline: none;
+          transition: border-color 0.15s;
+        }
+        .tg-input:focus { border-color: var(--border-2); }
+        .tg-input::placeholder { color: var(--text-3); }
+      `}</style>
+
       <div style={{ padding: '0', minHeight: '100vh' }}>
 
-        {/* Hero section — full-width themed block */}
+        {/* Hero section */}
         <div style={{
-          background: `radial-gradient(ellipse at 70% 40%, ${themeGlow} 0%, transparent 70%), #0a0a12`,
+          background: `radial-gradient(ellipse at 70% 40%, rgba(${themeGlowRgb},0.06) 0%, transparent 70%), var(--bg)`,
           padding: '32px 28px 28px',
-          borderBottom: `1px solid ${isUp ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)'}`,
+          borderBottom: `1px solid rgba(${themeGlowRgb},0.1)`,
           position: 'relative',
           overflow: 'hidden',
+          animation: spikeActive ? 'spike-glow 2s ease-in-out infinite' : 'none',
         }}>
           {/* Bull / Bear watermark */}
           <div style={{
             position: 'absolute', right: '20px', top: '50%',
             transform: 'translateY(-50%)',
-            fontSize: '120px', opacity: 0.07,
+            fontSize: '120px', opacity: 0.06,
             userSelect: 'none', pointerEvents: 'none',
           }}>
             {isUp ? '🐂' : '🐻'}
           </div>
 
           {/* Top row */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '32px', flexWrap: 'wrap', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '36px', flexWrap: 'wrap', marginBottom: '20px' }}>
             <div>
-              <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px', letterSpacing: '0.08em' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '6px', letterSpacing: '0.1em', fontFamily: 'var(--font-body)' }}>
                 {tickerDisplay} — LIVE PRICE
               </div>
-              <Odometer value={price != null ? price.toFixed(2) : null} fontSize={56} color="#fff" />
+              <Odometer value={price != null ? price.toFixed(2) : null} fontSize={56} color="var(--text-1)" />
             </div>
 
-            {/* 2-day % change — SMN style */}
             <div style={{ paddingTop: '12px' }}>
-              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px', letterSpacing: '0.08em' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px', letterSpacing: '0.1em', fontFamily: 'var(--font-body)' }}>
                 {isUp ? 'HIKE' : 'DROP'} · LAST 2 DAYS
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -281,56 +316,63 @@ export default function Dashboard() {
                 <Odometer
                   value={change2d !== null ? Math.abs(change2d).toFixed(2) : null}
                   fontSize={40}
-                  color={themeAccent}
+                  color={isUp ? '#22d47b' : '#f0515e'}
                 />
-                <span style={{ fontSize: '32px', fontWeight: 'bold', color: themeAccent }}>%</span>
+                <span style={{
+                  fontSize: '32px', fontWeight: 700,
+                  color: themeAccent,
+                  fontFamily: 'var(--font-display)',
+                }}>%</span>
               </div>
               {open2d != null && (
-                <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-                  2-day open: ${open2d.toFixed(2)}
+                <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px', fontFamily: 'var(--font-body)' }}>
+                  2-day open: {open2d.toFixed(2)}
                 </div>
               )}
             </div>
 
             {/* Spike indicator */}
             <div style={{ paddingTop: '12px' }}>
-              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px', letterSpacing: '0.08em' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px', letterSpacing: '0.1em', fontFamily: 'var(--font-body)' }}>
                 SPIKE ALERT
               </div>
-              {spikeData?.alerted ? (
+              {spikeActive ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <style>{`@keyframes blink-spike { 0%,100%{opacity:1} 50%{opacity:0.2} }`}</style>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ff4444', display: 'inline-block', animation: 'blink-spike 1s ease-in-out infinite' }} />
-                  <span style={{ fontSize: '13px', color: '#ff4444', fontWeight: 'bold', animation: 'blink-spike 1s ease-in-out infinite' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--red)', display: 'inline-block', animation: 'blink-spike 1s ease-in-out infinite' }} />
+                  <span style={{
+                    fontSize: '13px', color: 'var(--red)', fontWeight: 700,
+                    animation: 'blink-spike 1s ease-in-out infinite',
+                    fontFamily: 'var(--font-display)',
+                  }}>
                     SPIKE TODAY +{spikeData.pctMove}%
                   </span>
                 </div>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#333', display: 'inline-block' }} />
-                  <span style={{ fontSize: '13px', color: '#444' }}>No spike today</span>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--surface-3)', display: 'inline-block' }} />
+                  <span style={{ fontSize: '13px', color: 'var(--text-3)', fontFamily: 'var(--font-body)' }}>No spike today</span>
                 </div>
               )}
             </div>
 
-            <div style={{ marginLeft: 'auto', fontSize: '11px', color: '#555', textAlign: 'right', paddingTop: '8px' }}>
+            <div style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--text-3)', textAlign: 'right', paddingTop: '8px', fontFamily: 'var(--font-mono)' }}>
               {lastUpdated ? `Updated ${lastUpdated}` : 'Loading…'}
               <br />Refreshes every 30s
             </div>
           </div>
 
-          {/* 2-day chart */}
+          {/* Chart */}
           <div style={{
-            background: 'rgba(10,10,18,0.6)',
+            background: 'var(--surface)',
             borderRadius: '12px',
             padding: '16px',
-            border: `1px solid ${isUp ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)'}`,
+            border: `1px solid rgba(${themeGlowRgb},0.12)`,
           }}>
-            <div style={{ fontSize: '11px', color: '#666', marginBottom: '10px', letterSpacing: '0.06em' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '10px', letterSpacing: '0.06em', fontFamily: 'var(--font-body)' }}>
               2-DAY CHART · 15-MIN BARS · EASTERN TIME
             </div>
             {chartPoints.length < 2 ? (
-              <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333', fontSize: '13px' }}>
+              <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: '13px', fontFamily: 'var(--font-body)' }}>
                 {chartPoints.length === 0 ? 'Loading…' : 'Not enough data'}
               </div>
             ) : (
@@ -348,49 +390,39 @@ export default function Dashboard() {
         <div style={{ padding: '24px 28px', maxWidth: '900px' }}>
 
           {/* Telegram send */}
-          <div style={{ background: '#0f0f1a', borderRadius: '14px', padding: '20px', marginBottom: '16px', border: '1px solid #1a1a2e' }}>
-            <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px', letterSpacing: '0.06em' }}>
+          <div className="panel-card" style={{ padding: '20px', marginBottom: '14px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '12px', letterSpacing: '0.08em', fontFamily: 'var(--font-body)' }}>
               SEND TELEGRAM MESSAGE
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               <input
                 type="text"
+                className="tg-input"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && sendTelegram()}
                 placeholder="Type a message and press Enter or Send…"
-                style={{
-                  flex: 1, padding: '10px 14px',
-                  background: '#0a0a12', border: '1px solid #1e1e3a',
-                  borderRadius: '8px', color: '#fff',
-                  fontSize: '14px', fontFamily: 'monospace', outline: 'none',
-                }}
               />
-              <button onClick={sendTelegram} style={{
-                padding: '10px 22px', background: '#6366f1',
-                border: 'none', borderRadius: '8px', color: '#fff',
-                cursor: 'pointer', fontSize: '14px',
-                fontFamily: 'monospace', fontWeight: 'bold',
-              }}>
-                Send
-              </button>
+              <button className="tg-send-btn" onClick={sendTelegram}>Send</button>
             </div>
             {sendStatus && (
-              <div style={{ marginTop: '8px', fontSize: '13px', color: '#888' }}>{sendStatus}</div>
+              <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--text-2)', fontFamily: 'var(--font-body)' }}>{sendStatus}</div>
             )}
           </div>
 
           {/* Message log */}
-          <div style={{ background: '#0f0f1a', borderRadius: '14px', padding: '20px', border: '1px solid #1a1a2e' }}>
+          <div className="panel-card" style={{ padding: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', color: '#888', letterSpacing: '0.06em' }}>TELEGRAM MESSAGE LOG</div>
-              <div style={{ fontSize: '12px', color: '#666' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.08em', fontFamily: 'var(--font-body)' }}>
+                TELEGRAM MESSAGE LOG
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
                 {logEntries.length} message{logEntries.length !== 1 ? 's' : ''}
               </div>
             </div>
 
             {logEntries.length === 0 ? (
-              <div style={{ textAlign: 'center', color: '#666', fontSize: '13px', padding: '24px 0' }}>
+              <div style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: '13px', padding: '24px 0', fontFamily: 'var(--font-body)' }}>
                 No messages yet
               </div>
             ) : (
@@ -409,9 +441,10 @@ export default function Dashboard() {
                   return groups.map((group) => (
                     <div key={group.date} style={{ marginBottom: '16px' }}>
                       <div style={{
-                        fontSize: '11px', color: '#666', textTransform: 'uppercase',
+                        fontSize: '11px', color: 'var(--text-3)', textTransform: 'uppercase',
                         letterSpacing: '0.08em', marginBottom: '8px',
-                        borderBottom: '1px solid #1a1a2e', paddingBottom: '4px',
+                        borderBottom: '1px solid var(--border)', paddingBottom: '4px',
+                        fontFamily: 'var(--font-body)',
                       }}>
                         {group.date}
                       </div>
@@ -424,18 +457,19 @@ export default function Dashboard() {
                           <div key={entry.id} style={{
                             display: 'flex', gap: '10px', alignItems: 'flex-start',
                             padding: '8px 10px', borderRadius: '8px',
-                            marginBottom: '4px', background: '#0a0a12',
+                            marginBottom: '4px', background: 'var(--bg)',
                           }}>
-                            <span style={{ fontSize: '11px', color: '#777', minWidth: '40px', paddingTop: '1px' }}>{time}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-3)', minWidth: '40px', paddingTop: '1px', fontFamily: 'var(--font-mono)' }}>{time}</span>
                             <span style={{
                               fontSize: '10px', padding: '2px 7px', borderRadius: '4px',
-                              background: isScheduled ? '#1e1e3a' : '#0f1a0f',
-                              color: isScheduled ? '#6366f1' : '#4ade80',
+                              background: isScheduled ? 'rgba(108,126,248,0.1)' : 'rgba(34,212,123,0.08)',
+                              color: isScheduled ? 'var(--indigo)' : 'var(--green)',
                               whiteSpace: 'nowrap', minWidth: '90px', textAlign: 'center',
+                              fontFamily: 'var(--font-mono)',
                             }}>
                               {entry.source}
                             </span>
-                            <span style={{ fontSize: '12px', color: '#ccc', lineHeight: '1.5', whiteSpace: 'pre-line' }}>
+                            <span style={{ fontSize: '12px', color: 'var(--text-2)', lineHeight: '1.5', whiteSpace: 'pre-line', fontFamily: 'var(--font-body)' }}>
                               {entry.message}
                             </span>
                           </div>

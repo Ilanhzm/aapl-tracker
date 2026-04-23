@@ -46,6 +46,7 @@ export default function SimulateHike() {
   const [result, setResult] = useState(null);
   const [calculating, setCalculating] = useState(false);
   const [gaugeAngle, setGaugeAngle] = useState(-90);
+  const [calcFlash, setCalcFlash] = useState(false);
   const canvasRef = useRef(null);
 
   // Turbo refs — interval IDs and current value trackers
@@ -129,9 +130,9 @@ export default function SimulateHike() {
     ctx.scale(dpr, dpr);
     const W = cssW, H = cssH;
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#0a0a12';
+    ctx.fillStyle = '#07080f';
     ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = '#1a1a2e';
+    ctx.strokeStyle = '#1a1d35';
     ctx.lineWidth = 1;
     for (let i = 0; i <= 4; i++) {
       const y = (i / 4) * H;
@@ -148,13 +149,13 @@ export default function SimulateHike() {
     const startX = padX, endX = W - padX, midX = (startX + endX) / 2;
 
     const grad = ctx.createLinearGradient(0, endY, 0, startY + 20);
-    grad.addColorStop(0, 'rgba(74,222,128,0.3)');
-    grad.addColorStop(1, 'rgba(74,222,128,0.02)');
+    grad.addColorStop(0, 'rgba(34,212,123,0.28)');
+    grad.addColorStop(1, 'rgba(34,212,123,0.02)');
 
     ctx.beginPath();
     ctx.moveTo(startX, startY);
     ctx.bezierCurveTo(midX, startY, midX, endY, endX, endY);
-    ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.strokeStyle = '#22d47b'; ctx.lineWidth = 2.5; ctx.stroke();
 
     ctx.beginPath();
     ctx.moveTo(startX, startY);
@@ -163,11 +164,11 @@ export default function SimulateHike() {
     ctx.fillStyle = grad; ctx.fill();
 
     ctx.beginPath(); ctx.arc(startX, startY, 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#4ade80'; ctx.fill();
+    ctx.fillStyle = '#22d47b'; ctx.fill();
     ctx.beginPath(); ctx.arc(endX, endY, 5, 0, Math.PI * 2);
     ctx.fillStyle = '#fff'; ctx.fill();
 
-    ctx.fillStyle = '#4ade80'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'left';
+    ctx.fillStyle = '#22d47b'; ctx.font = 'bold 12px "DM Mono", monospace'; ctx.textAlign = 'left';
     ctx.fillText(startPrice.toFixed(1), startX + 8, startY - 8);
     ctx.fillStyle = '#fff'; ctx.textAlign = 'right';
     ctx.fillText(endPrice.toFixed(1), endX - 8, endY - 8);
@@ -188,6 +189,8 @@ export default function SimulateHike() {
 
   async function calculate() {
     if (jumpPct <= 0) return;
+    setCalcFlash(true);
+    setTimeout(() => setCalcFlash(false), 300);
     setCalculating(true);
     try {
       const res = await fetch(`/api/algorithm?jump=${jumpPct.toFixed(2)}`);
@@ -204,28 +207,65 @@ export default function SimulateHike() {
     setGaugeAngle(-90);
   }
 
-  const gaugeColor = result == null ? '#6366f1'
-    : result.probability >= 60 ? '#4ade80'
-    : result.probability >= 30 ? '#facc15' : '#f87171';
+  const gaugeColor = result == null ? 'var(--indigo)'
+    : result.probability >= 60 ? '#22d47b'
+    : result.probability >= 30 ? '#f5c118' : '#f0515e';
 
-  // Turbo indicator label for slider display
   const startIsTurbo = startTurboVIX !== null;
   const endIsTurbo   = endTurboVIX   !== null;
 
   return (
     <Layout>
+      <style>{`
+        @keyframes panel-reveal {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes calc-flash {
+          0%   { opacity: 1; }
+          50%  { opacity: 0.45; }
+          100% { opacity: 1; }
+        }
+        .calc-btn {
+          padding: 14px 32px;
+          background: var(--green);
+          border: none; border-radius: 10px;
+          color: #000; cursor: pointer;
+          font-family: var(--font-display); font-size: 14px; font-weight: 700;
+          letter-spacing: 0.04em;
+          box-shadow: 0 0 24px rgba(34,212,123,0.35);
+          transition: filter 0.2s, box-shadow 0.2s, transform 0.12s;
+        }
+        .calc-btn:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 0 32px rgba(34,212,123,0.5); }
+        .calc-btn:active:not(:disabled) { transform: scale(0.96); }
+        .calc-btn:disabled { background: var(--surface-2); color: var(--green); cursor: wait; box-shadow: none; }
+        .reset-btn {
+          padding: 12px 24px;
+          background: var(--surface-2); border: 1px solid var(--border-2);
+          border-radius: 10px; color: var(--text-2); cursor: pointer;
+          font-family: var(--font-body); font-size: 13px;
+          transition: color 0.15s, border-color 0.15s, transform 0.12s;
+        }
+        .reset-btn:hover { color: var(--text-1); border-color: var(--border-2); }
+        .reset-btn:active { transform: scale(0.96); }
+        .stat-mini {
+          background: var(--surface-2); border-radius: 8px; padding: 10px 14px; flex: 1;
+        }
+      `}</style>
+
       <div style={{ padding: '32px 28px', maxWidth: '900px' }}>
+        {/* Header */}
         <div style={{ marginBottom: '28px' }}>
-          <h1 style={{ margin: 0, fontSize: '20px', color: '#fff', letterSpacing: '0.05em' }}>
-            SIMULATE <span style={{ color: '#e53e3e' }}>HIKE</span>
+          <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: 'var(--text-1)', letterSpacing: '-0.01em' }}>
+            SIMULATE <span style={{ color: 'var(--red)' }}>HIKE</span>
           </h1>
-          <div style={{ fontSize: '12px', color: '#444', marginTop: '4px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-3)', marginTop: '4px', fontFamily: 'var(--font-body)' }}>
             Set a two-day VIX move · see the reversion probability
           </div>
         </div>
 
         {/* Step indicators */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '28px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '28px', flexWrap: 'wrap' }}>
           {['Set start price', 'Set end price', 'Review hike', 'Results'].map((label, i) => {
             const s = i + 1;
             const done = step > s, active = step === s;
@@ -233,15 +273,18 @@ export default function SimulateHike() {
               <div key={s} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <div style={{
                   width: '22px', height: '22px', borderRadius: '50%',
-                  background: done ? '#4ade80' : active ? '#e53e3e' : '#1a1a2e',
-                  color: done || active ? '#000' : '#444',
-                  fontSize: '11px', fontWeight: 'bold',
+                  background: done ? 'var(--green)' : active ? 'var(--red)' : 'var(--surface-3)',
+                  color: done || active ? (done ? '#000' : '#fff') : 'var(--text-3)',
+                  fontSize: '11px', fontWeight: 700,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'var(--font-mono)',
                 }}>
                   {done ? '✓' : s}
                 </div>
-                <span style={{ fontSize: '11px', color: active ? '#fff' : done ? '#4ade80' : '#444' }}>{label}</span>
-                {i < 3 && <div style={{ width: '20px', height: '1px', background: '#1e1e3a' }} />}
+                <span style={{ fontSize: '11px', color: active ? 'var(--text-1)' : done ? 'var(--green)' : 'var(--text-3)', fontFamily: 'var(--font-body)' }}>
+                  {label}
+                </span>
+                {i < 3 && <div style={{ width: '20px', height: '1px', background: 'var(--surface-3)' }} />}
               </div>
             );
           })}
@@ -251,12 +294,12 @@ export default function SimulateHike() {
 
           {/* Left slider — start price */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <div style={{ fontSize: '10px', color: step === 1 ? '#e53e3e' : '#444', textAlign: 'center', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: '10px', color: step === 1 ? 'var(--red)' : 'var(--text-3)', textAlign: 'center', letterSpacing: '0.05em', fontFamily: 'var(--font-body)' }}>
               START
             </div>
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: step >= 1 ? (startIsTurbo ? '#facc15' : '#fff') : '#333', minWidth: '36px', textAlign: 'center' }}>
+            <div style={{ fontSize: '18px', fontWeight: 500, color: startIsTurbo ? 'var(--yellow)' : 'var(--text-1)', minWidth: '36px', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
               {startPrice}
-              {startIsTurbo && <span style={{ fontSize: '9px', color: '#facc15', display: 'block', marginTop: '-2px' }}>TURBO</span>}
+              {startIsTurbo && <span style={{ fontSize: '9px', color: 'var(--yellow)', display: 'block', marginTop: '-2px', letterSpacing: '0.06em' }}>TURBO</span>}
             </div>
             <input
               type="range" min="0" max="100" step="1"
@@ -283,13 +326,13 @@ export default function SimulateHike() {
               }}
               style={{
                 writingMode: 'vertical-lr', direction: 'rtl',
-                height: '240px', accentColor: startIsTurbo ? '#facc15' : '#e53e3e',
+                height: '240px', accentColor: startIsTurbo ? '#f5c118' : '#f0515e',
                 cursor: 'pointer', opacity: step === 4 ? 0.4 : 1,
               }}
               disabled={step === 4}
             />
-            <div style={{ fontSize: '10px', color: '#333' }}>VIX</div>
-            <div style={{ fontSize: '9px', color: '#333', textAlign: 'center', maxWidth: '44px', lineHeight: 1.3 }}>
+            <div style={{ fontSize: '10px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>VIX</div>
+            <div style={{ fontSize: '9px', color: 'var(--text-3)', textAlign: 'center', maxWidth: '44px', lineHeight: 1.3, fontFamily: 'var(--font-body)' }}>
               hold top for↑80
             </div>
           </div>
@@ -297,67 +340,81 @@ export default function SimulateHike() {
           {/* Chart area */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {step === 1 && (
-              <div style={{ background: '#1a1a2e', border: '1px solid #e53e3e', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#ccc', textAlign: 'center' }}>
-                Drag the <span style={{ color: '#e53e3e' }}>left bar</span> to set the VIX starting price
+              <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: 'var(--text-2)', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
+                Drag the <span style={{ color: 'var(--red)' }}>left bar</span> to set the VIX starting price
               </div>
             )}
             {step === 2 && (
-              <div style={{ background: '#1a1a2e', border: '1px solid #e53e3e', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#ccc', textAlign: 'center' }}>
-                Now drag the <span style={{ color: '#fff' }}>right bar</span> to set the ending price
+              <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: 'var(--text-2)', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
+                Now drag the <span style={{ color: 'var(--text-1)' }}>right bar</span> to set the ending price
               </div>
             )}
             {step >= 3 && step < 4 && (
               <div style={{
-                background: '#0f1a0f', border: '1px solid #4ade80',
+                background: 'rgba(34,212,123,0.05)', border: '1px solid rgba(34,212,123,0.25)',
                 borderRadius: '8px', padding: '10px 14px',
-                fontSize: '12px', color: '#4ade80', textAlign: 'center',
+                fontSize: '12px', color: 'var(--green)', textAlign: 'center',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                fontFamily: 'var(--font-body)',
               }}>
                 2-day hike:&nbsp;
-                <span style={{ fontWeight: 'bold' }}>+</span>
-                <Odometer value={jumpPct.toFixed(1)} fontSize={18} color="#4ade80" />
-                <span style={{ fontWeight: 'bold', fontSize: '18px' }}>%</span>
+                <span style={{ fontWeight: 700 }}>+</span>
+                <Odometer value={jumpPct.toFixed(1)} fontSize={18} color="#22d47b" />
+                <span style={{ fontWeight: 700, fontSize: '18px', fontFamily: 'var(--font-display)' }}>%</span>
               </div>
             )}
             {step === 4 && (
-              <div style={{ background: '#0f1a0f', border: '1px solid #4ade80', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', color: '#4ade80', textAlign: 'center' }}>
+              <div style={{ background: 'rgba(34,212,123,0.05)', border: '1px solid rgba(34,212,123,0.2)', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', color: 'var(--green)', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
                 Simulated hike: <strong>+{jumpPct.toFixed(1)}%</strong> (from {startPrice} → {endPrice})
               </div>
             )}
 
-            <canvas ref={canvasRef} style={{ width: '100%', height: '240px', borderRadius: '10px', border: '1px solid #1a1a2e', display: 'block' }} />
+            <canvas ref={canvasRef} style={{
+              width: '100%', height: '240px', borderRadius: '10px',
+              border: '1px solid var(--border)', display: 'block',
+            }} />
 
             {step === 4 && result && (
-              <div style={{ background: '#0f0f1a', border: '1px solid #1a1a2e', borderRadius: '12px', padding: '20px', display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{
+                background: 'var(--surface)', border: '1px solid var(--border)',
+                borderRadius: '12px', padding: '20px',
+                display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap',
+                animation: 'panel-reveal 0.5s ease-out both',
+              }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ fontSize: '11px', color: '#555' }}>Your reversion probability</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-3)', fontFamily: 'var(--font-body)' }}>Reversion probability</div>
                   <svg width="140" height="80" viewBox="0 0 140 80">
-                    <path d="M 10 75 A 60 60 0 0 1 130 75" fill="none" stroke="#1e1e3a" strokeWidth="10" strokeLinecap="round" />
+                    <path d="M 10 75 A 60 60 0 0 1 130 75" fill="none" stroke="var(--surface-3)" strokeWidth="10" strokeLinecap="round" />
                     <path d="M 10 75 A 60 60 0 0 1 130 75" fill="none" stroke={gaugeColor} strokeWidth="10" strokeLinecap="round"
                       strokeDasharray={`${Math.PI * 60 * (result.probability / 100)} ${Math.PI * 60}`} />
                     <line x1="70" y1="75"
                       x2={70 + 48 * Math.cos((gaugeAngle * Math.PI) / 180)}
                       y2={75 + 48 * Math.sin((gaugeAngle * Math.PI) / 180)}
-                      stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-                    <circle cx="70" cy="75" r="4" fill="#fff" />
-                    <text x="70" y="68" textAnchor="middle" fill={gaugeColor} fontSize="15" fontWeight="bold" fontFamily="monospace">{animProb}%</text>
+                      stroke="var(--text-1)" strokeWidth="2" strokeLinecap="round" />
+                    <circle cx="70" cy="75" r="4" fill="var(--text-1)" />
+                    <text x="70" y="68" textAnchor="middle" fill={gaugeColor} fontSize="15" fontWeight="bold" fontFamily="DM Mono, monospace">
+                      {animProb}%
+                    </text>
                   </svg>
                 </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ background: '#1a1a2e', borderRadius: '8px', padding: '12px 16px' }}>
-                    <div style={{ fontSize: '11px', color: '#444', marginBottom: '4px' }}>Happens once every</div>
-                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#a5b4fc' }}>
-                      {animFreq} <span style={{ fontSize: '14px', color: '#555' }}>trading days</span>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ background: 'var(--surface-2)', borderRadius: '8px', padding: '12px 16px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px', fontFamily: 'var(--font-body)' }}>Happens once every</div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                      <span style={{ fontSize: '28px', fontWeight: 700, color: 'var(--indigo)', fontFamily: 'var(--font-mono)' }}>
+                        {animFreq}
+                      </span>
+                      <span style={{ fontSize: '14px', color: 'var(--text-3)', fontFamily: 'var(--font-body)' }}>trading days</span>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <div style={{ background: '#1a1a2e', borderRadius: '8px', padding: '10px 14px', flex: 1 }}>
-                      <div style={{ fontSize: '10px', color: '#444' }}>Spike instances</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff' }}>{result.instances}</div>
+                    <div className="stat-mini">
+                      <div style={{ fontSize: '10px', color: 'var(--text-3)', fontFamily: 'var(--font-body)' }}>Spike instances</div>
+                      <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-1)', fontFamily: 'var(--font-mono)' }}>{result.instances}</div>
                     </div>
-                    <div style={{ background: '#1a1a2e', borderRadius: '8px', padding: '10px 14px', flex: 1 }}>
-                      <div style={{ fontSize: '10px', color: '#444' }}>Reverted</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#4ade80' }}>{result.reversions}</div>
+                    <div className="stat-mini">
+                      <div style={{ fontSize: '10px', color: 'var(--text-3)', fontFamily: 'var(--font-body)' }}>Reverted</div>
+                      <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--green)', fontFamily: 'var(--font-mono)' }}>{result.reversions}</div>
                     </div>
                   </div>
                 </div>
@@ -367,12 +424,12 @@ export default function SimulateHike() {
 
           {/* Right slider — end price */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <div style={{ fontSize: '10px', color: step === 2 ? '#fff' : '#444', textAlign: 'center', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: '10px', color: step === 2 ? 'var(--text-1)' : 'var(--text-3)', textAlign: 'center', letterSpacing: '0.05em', fontFamily: 'var(--font-body)' }}>
               END
             </div>
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: step >= 2 ? (endIsTurbo ? '#facc15' : '#fff') : '#333', minWidth: '36px', textAlign: 'center' }}>
+            <div style={{ fontSize: '18px', fontWeight: 500, color: endIsTurbo ? 'var(--yellow)' : 'var(--text-1)', minWidth: '36px', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
               {endPrice}
-              {endIsTurbo && <span style={{ fontSize: '9px', color: '#facc15', display: 'block', marginTop: '-2px' }}>TURBO</span>}
+              {endIsTurbo && <span style={{ fontSize: '9px', color: 'var(--yellow)', display: 'block', marginTop: '-2px', letterSpacing: '0.06em' }}>TURBO</span>}
             </div>
             <input
               type="range" min="0" max="100" step="1"
@@ -401,14 +458,14 @@ export default function SimulateHike() {
               }}
               style={{
                 writingMode: 'vertical-lr', direction: 'rtl',
-                height: '240px', accentColor: endIsTurbo ? '#facc15' : '#fff',
+                height: '240px', accentColor: endIsTurbo ? '#f5c118' : '#edf0f7',
                 cursor: step < 2 ? 'not-allowed' : 'pointer',
                 opacity: step < 2 ? 0.2 : step === 4 ? 0.4 : 1,
               }}
               disabled={step < 2 || step === 4}
             />
-            <div style={{ fontSize: '10px', color: '#333' }}>VIX</div>
-            <div style={{ fontSize: '9px', color: '#333', textAlign: 'center', maxWidth: '44px', lineHeight: 1.3 }}>
+            <div style={{ fontSize: '10px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>VIX</div>
+            <div style={{ fontSize: '9px', color: 'var(--text-3)', textAlign: 'center', maxWidth: '44px', lineHeight: 1.3, fontFamily: 'var(--font-body)' }}>
               hold top for↑80
             </div>
           </div>
@@ -416,37 +473,30 @@ export default function SimulateHike() {
 
         {/* Action buttons */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px' }}>
-          <div style={{ fontSize: '12px', color: '#333' }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
             {step >= 3 && step < 4 && `+${jumpPct.toFixed(1)}% hike · ${startPrice} → ${endPrice}`}
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
             {step === 4 && (
-              <button onClick={reset} style={{ padding: '12px 24px', background: 'transparent', border: '1px solid #333', borderRadius: '8px', color: '#666', cursor: 'pointer', fontSize: '13px', fontFamily: 'monospace' }}>
-                RESET
-              </button>
+              <button className="reset-btn" onClick={reset}>RESET</button>
             )}
             {step >= 3 && step < 4 && (
-              <button onClick={calculate} disabled={calculating} style={{
-                padding: '14px 32px',
-                background: calculating ? '#1a2e1a' : '#22c55e',
-                border: 'none', borderRadius: '8px',
-                color: calculating ? '#4ade80' : '#000',
-                cursor: calculating ? 'wait' : 'pointer',
-                fontSize: '14px', fontWeight: 'bold', fontFamily: 'monospace',
-                letterSpacing: '0.05em',
-                boxShadow: calculating ? 'none' : '0 0 20px rgba(34,197,94,0.4)',
-                transition: 'all 0.2s',
-              }}>
+              <button
+                className="calc-btn"
+                onClick={calculate}
+                disabled={calculating}
+                style={{ animation: calcFlash ? 'calc-flash 0.3s ease-out' : 'none' }}
+              >
                 {calculating ? 'CALCULATING…' : 'CALCULATE NOW'}
               </button>
             )}
           </div>
         </div>
 
-        <div style={{ marginTop: '24px', fontSize: '11px', color: '#444', textAlign: 'center', lineHeight: 1.8 }}>
+        <div style={{ marginTop: '24px', fontSize: '11px', color: 'var(--text-3)', textAlign: 'center', lineHeight: 1.8, fontFamily: 'var(--font-body)' }}>
           Based on daily VIX closing prices · Jan 1990 – Apr 2026 · reversion window: 10 trading days
           <br />
-          <span style={{ color: '#2a2a4a' }}>VIX typical range: 10–30 · Stressed markets: 30–50 · Crisis peaks (2008, COVID): 50–89</span>
+          <span style={{ color: 'var(--surface-3)' }}>VIX typical range: 10–30 · Stressed markets: 30–50 · Crisis peaks (2008, COVID): 50–89</span>
         </div>
       </div>
     </Layout>

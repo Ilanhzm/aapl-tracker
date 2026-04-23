@@ -91,16 +91,31 @@ export default function LiveTrades() {
 
   return (
     <Layout>
+      <style>{`
+        .trade-card {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-left: 3px solid var(--red);
+          border-radius: 14px;
+          padding: 20px 24px;
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .trade-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 24px rgba(240,81,94,0.12);
+        }
+      `}</style>
+
       <div style={{ padding: '32px 28px', minHeight: '100vh' }}>
-        <div style={{ fontSize: '11px', color: '#888', letterSpacing: '0.08em', marginBottom: '8px' }}>
+        <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.1em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
           FIND LIVE TRADES
         </div>
-        <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#fff', marginBottom: '28px' }}>
+        <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-1)', marginBottom: '28px', fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
           Active Spike Trades
         </div>
 
         {loading ? (
-          <div style={{ color: '#555', fontSize: '13px' }}>Loading…</div>
+          <div style={{ color: 'var(--text-3)', fontSize: '13px', fontFamily: 'var(--font-body)' }}>Loading…</div>
         ) : openTrades.length === 0 ? (
           /* No active trades — calm state */
           <div style={{
@@ -108,10 +123,14 @@ export default function LiveTrades() {
             minHeight: '50vh', gap: '16px',
           }}>
             <FloatingYogi />
-            <div style={{ fontSize: '22px', color: '#4ade80', fontWeight: 'bold', letterSpacing: '0.08em', marginTop: '8px' }}>
+            <div style={{
+              fontSize: '22px', color: 'var(--green)', fontWeight: 700,
+              letterSpacing: '0.06em', marginTop: '8px',
+              fontFamily: 'var(--font-display)',
+            }}>
               VIX IS CHILLING
             </div>
-            <div style={{ fontSize: '13px', color: '#555', textAlign: 'center', lineHeight: 1.6 }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-3)', textAlign: 'center', lineHeight: 1.7, fontFamily: 'var(--font-body)' }}>
               No active spike trades detected.
               <br />Spike checks run every 15 min during market hours.
             </div>
@@ -120,47 +139,44 @@ export default function LiveTrades() {
           /* Active trades */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '760px' }}>
             {openTrades.map((trade) => (
-              <div key={trade.id} style={{
-                background: '#0f0f1a',
-                border: '1px solid rgba(248,113,113,0.25)',
-                borderLeft: '3px solid #f87171',
-                borderRadius: '12px',
-                padding: '20px 24px',
-              }}>
+              <div key={trade.id} className="trade-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
                   <div>
-                    <div style={{ fontSize: '11px', color: '#888', letterSpacing: '0.06em', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.06em', marginBottom: '4px', fontFamily: 'var(--font-body)' }}>
                       TRIGGERED {daysAgo(trade.triggerDate).toUpperCase()} · {trade.triggerDate} at {trade.triggerTime} ET
                     </div>
-                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#f87171' }}>
+                    <div style={{
+                      fontSize: '30px', fontWeight: 700, color: 'var(--red)',
+                      fontFamily: 'var(--font-display)', letterSpacing: '-0.02em',
+                      textShadow: '0 0 20px rgba(240,81,94,0.4)',
+                    }}>
                       +{trade.pctMove}% spike
                     </div>
                   </div>
                   <div style={{
-                    background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)',
-                    borderRadius: '8px', padding: '8px 14px', fontSize: '12px', color: '#f87171', textAlign: 'center',
+                    background: 'rgba(240,81,94,0.08)', border: '1px solid rgba(240,81,94,0.18)',
+                    borderRadius: '8px', padding: '8px 14px', fontSize: '11px',
+                    color: 'var(--red)', textAlign: 'center', fontFamily: 'var(--font-body)',
                   }}>
                     OPEN<br />
-                    <span style={{ fontSize: '11px', color: '#888' }}>{daysUntil(trade.expirationDate)}</span>
+                    <span style={{ color: 'var(--text-3)' }}>{daysUntil(trade.expirationDate)}</span>
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '32px', marginTop: '16px', flexWrap: 'wrap' }}>
+                  {[
+                    { label: 'ENTRY VIX', value: trade.entryVIX, color: 'var(--text-1)' },
+                    { label: 'REVERSION TARGET', value: trade.reversionTarget, color: 'var(--green)' },
+                    { label: 'EXPIRES', value: trade.expirationDate, color: 'var(--text-1)' },
+                  ].map(({ label, value, color }) => (
+                    <div key={label}>
+                      <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '2px', letterSpacing: '0.06em', fontFamily: 'var(--font-mono)' }}>{label}</div>
+                      <div style={{ fontSize: '18px', color, fontWeight: 500, fontFamily: 'var(--font-mono)' }}>{value}</div>
+                    </div>
+                  ))}
                   <div>
-                    <div style={{ fontSize: '11px', color: '#555', marginBottom: '2px' }}>ENTRY VIX</div>
-                    <div style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold' }}>{trade.entryVIX}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '11px', color: '#555', marginBottom: '2px' }}>REVERSION TARGET</div>
-                    <div style={{ fontSize: '18px', color: '#4ade80', fontWeight: 'bold' }}>{trade.reversionTarget}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '11px', color: '#555', marginBottom: '2px' }}>EXPIRES</div>
-                    <div style={{ fontSize: '18px', color: '#fff' }}>{trade.expirationDate}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '11px', color: '#555', marginBottom: '2px' }}>OPTION P&amp;L</div>
-                    <div style={{ fontSize: '14px', color: '#333' }}>Available in Phase 2</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '2px', letterSpacing: '0.06em', fontFamily: 'var(--font-mono)' }}>OPTION P&amp;L</div>
+                    <div style={{ fontSize: '13px', color: 'var(--text-3)', fontFamily: 'var(--font-body)', fontStyle: 'italic' }}>Phase 2</div>
                   </div>
                 </div>
               </div>

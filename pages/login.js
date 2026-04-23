@@ -19,11 +19,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const result = await signIn('credentials', {
-      username,
-      password,
-      redirect: false,
-    });
+    const result = await signIn('credentials', { username, password, redirect: false });
     setLoading(false);
     if (result?.ok) {
       router.push('/');
@@ -33,107 +29,139 @@ export default function Login() {
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: '#0f0f1a',
-        fontFamily: 'monospace',
-      }}
-    >
-      <div
-        style={{
-          background: '#1a1a2e',
-          padding: '40px',
-          borderRadius: '16px',
-          width: '360px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-        }}
-      >
-        <h2
-          style={{
-            color: '#a5b4fc',
-            textAlign: 'center',
-            marginTop: 0,
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '100vh',
+      background: 'var(--bg)',
+      fontFamily: 'var(--font-body)',
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      <style>{`
+        @keyframes orb-drift-a {
+          0%   { transform: translate(0, 0) scale(1); }
+          100% { transform: translate(40px, -30px) scale(1.08); }
+        }
+        @keyframes orb-drift-b {
+          0%   { transform: translate(0, 0) scale(1); }
+          100% { transform: translate(-30px, 25px) scale(1.05); }
+        }
+        @keyframes card-enter {
+          from { opacity: 0; transform: scale(0.94) translateY(18px); }
+          to   { opacity: 1; transform: scale(1)    translateY(0); }
+        }
+        .login-input {
+          width: 100%;
+          padding: 12px 14px;
+          border-radius: 10px;
+          border: 1px solid var(--border);
+          background: var(--surface-2);
+          color: var(--text-1);
+          font-family: var(--font-body);
+          font-size: 14px;
+          box-sizing: border-box;
+          outline: none;
+          transition: border-color 0.15s;
+        }
+        .login-input:focus { border-color: var(--border-2); }
+        .login-input::placeholder { color: var(--text-3); }
+        .login-btn {
+          width: 100%;
+          padding: 13px;
+          background: var(--indigo);
+          color: #fff;
+          border: none;
+          border-radius: 10px;
+          cursor: pointer;
+          font-family: var(--font-display);
+          font-size: 14px;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+          transition: filter 0.2s, box-shadow 0.2s, transform 0.12s;
+        }
+        .login-btn:hover:not(:disabled) {
+          filter: brightness(1.2);
+          box-shadow: 0 0 22px rgba(108,126,248,0.4);
+        }
+        .login-btn:active:not(:disabled) { transform: scale(0.96); }
+        .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+      `}</style>
+
+      {/* Background orbs */}
+      <div style={{
+        position: 'absolute', top: '15%', left: '20%',
+        width: '480px', height: '480px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(108,126,248,0.09) 0%, transparent 70%)',
+        animation: 'orb-drift-a 14s ease-in-out infinite alternate',
+        pointerEvents: 'none',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: '10%', right: '15%',
+        width: '380px', height: '380px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(34,212,123,0.07) 0%, transparent 70%)',
+        animation: 'orb-drift-b 18s ease-in-out infinite alternate',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Card */}
+      <div style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border-2)',
+        borderRadius: '20px',
+        padding: '44px 40px',
+        width: '400px',
+        position: 'relative',
+        zIndex: 1,
+        animation: 'card-enter 0.45s cubic-bezier(0.34,1.56,0.64,1) both',
+      }}>
+        {/* Brand */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '36px',
+            fontWeight: 800,
+            color: 'var(--text-1)',
+            letterSpacing: '-0.03em',
+            lineHeight: 1,
             marginBottom: '8px',
-            fontSize: '20px',
-          }}
-        >
-          AAPL Market Dashboard
-        </h2>
-        <p style={{ color: '#555', textAlign: 'center', marginBottom: '28px', fontSize: '13px' }}>
-          Sign in to continue
-        </p>
-        <form onSubmit={handleSubmit}>
+          }}>
+            VIXit
+          </div>
+          <div style={{ fontSize: '14px', color: 'var(--text-2)', fontFamily: 'var(--font-body)' }}>
+            Volatility intelligence, simplified.
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <input
             type="text"
+            className="login-input"
             placeholder="Username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
-            style={{
-              width: '100%',
-              padding: '12px 14px',
-              marginBottom: '12px',
-              borderRadius: '8px',
-              border: '1px solid #2a2a4a',
-              background: '#0f0f1a',
-              color: '#fff',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-              outline: 'none',
-            }}
           />
           <input
             type="password"
+            className="login-input"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            style={{
-              width: '100%',
-              padding: '12px 14px',
-              marginBottom: '20px',
-              borderRadius: '8px',
-              border: '1px solid #2a2a4a',
-              background: '#0f0f1a',
-              color: '#fff',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-              outline: 'none',
-            }}
+            style={{ marginBottom: '8px' }}
           />
+
           {error && (
-            <p
-              style={{
-                color: '#f87171',
-                marginBottom: '14px',
-                textAlign: 'center',
-                fontSize: '13px',
-              }}
-            >
+            <div style={{ fontSize: '13px', color: 'var(--red)', textAlign: 'center', marginBottom: '4px' }}>
               {error}
-            </p>
+            </div>
           )}
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '12px',
-              background: loading ? '#3730a3' : '#6366f1',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontSize: '15px',
-              fontWeight: 'bold',
-              fontFamily: 'monospace',
-              transition: 'background 0.2s',
-            }}
-          >
+
+          <button type="submit" className="login-btn" disabled={loading}>
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
