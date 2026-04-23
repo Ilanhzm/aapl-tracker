@@ -2,7 +2,11 @@ const { getStore } = require('@netlify/blobs');
 
 async function addLogEntry(message, type, source) {
   try {
-    const store = getStore('telegram-log');
+    const store = getStore({
+      name: 'telegram-log',
+      siteID: process.env.NETLIFY_SITE_ID || process.env.SITE_ID,
+      token: process.env.NETLIFY_TOKEN || process.env.NETLIFY_BLOBS_TOKEN,
+    });
     const entries = (await store.get('entries', { type: 'json' })) || [];
     entries.unshift({
       id: Date.now(),
