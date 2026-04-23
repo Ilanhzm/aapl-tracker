@@ -15,9 +15,10 @@ function OdometerDigit({ char, fontSize, color, delay = 0 }) {
         fontSize: `${fontSize}px`,
         fontWeight: 'bold',
         color,
-        fontFamily: 'monospace',
+        fontFamily: '"DM Mono", monospace',
         lineHeight: 1,
         verticalAlign: 'bottom',
+        background: 'transparent',
       }}>
         {char}
       </span>
@@ -33,6 +34,7 @@ function OdometerDigit({ char, fontSize, color, delay = 0 }) {
       overflow: 'hidden',
       height: `${h}px`,
       verticalAlign: 'bottom',
+      background: 'transparent',
     }}>
       <span style={{
         display: 'flex',
@@ -40,6 +42,7 @@ function OdometerDigit({ char, fontSize, color, delay = 0 }) {
         transform: `translateY(${mounted ? -d * h : 0}px)`,
         transition: mounted ? `transform 0.55s cubic-bezier(0.23, 1, 0.32, 1) ${delay}ms` : 'none',
         willChange: 'transform',
+        background: 'transparent',
       }}>
         {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
           <span key={n} style={{
@@ -49,9 +52,10 @@ function OdometerDigit({ char, fontSize, color, delay = 0 }) {
             fontSize: `${fontSize}px`,
             fontWeight: 'bold',
             color,
-            fontFamily: 'monospace',
+            fontFamily: '"DM Mono", monospace',
             textAlign: 'center',
             minWidth: `${fontSize * 0.62}px`,
+            background: 'transparent',
           }}>
             {n}
           </span>
