@@ -47,7 +47,28 @@ The daily script will run as a Netlify Scheduled Function.
 
 ---
 
-## 6. Phase 2 — Real Option Prices via IBKR (FUTURE)
+## 6. Missing Phase 1 Trade Data — Needs IBKR (Phase 2)
+
+The following fields exist in every trade record but are left empty in Phase 1.
+They will be populated in Phase 2 once IBKR is connected.
+
+| Field | What it is | Where it comes from |
+|-------|-----------|---------------------|
+| `optionStrike` | Strike price of each PUT bought | Chosen at entry: ATM, ATM-1, ATM-2 (see Q1) |
+| `optionExpiration` | Expiry date of the option contract | Closest expiry ≥ 10 trading days from trigger |
+| `entryOptionPrice` | Cost of PUT at moment of entry | IBKR live bid/ask mid at trigger time |
+| `exitOptionPrice` | Value of PUT at moment of exit | IBKR live price when VIX hits reversion target, or 0 if expired |
+| `tradeReturn` | % profit or loss per trade | `(exitOptionPrice - entryOptionPrice) / entryOptionPrice × 100` |
+| `avgReturn` | Average return across all closed trades | Sum of tradeReturn / number of closed trades |
+
+Additional open questions for Phase 2:
+- If option expires worthless: `exitOptionPrice = 0`, `tradeReturn = -100%`
+- Are the 3 strikes tracked as separate trades or one combined trade? (see Q2)
+- Which price to use from IBKR: bid, ask, or mid? (see Q1)
+
+---
+
+## 7. Phase 2 — Real Option Prices via IBKR (FUTURE)
 
 Phase 1 of the tracker skips option pricing entirely and only validates whether VIX reverts after a spike.
 
