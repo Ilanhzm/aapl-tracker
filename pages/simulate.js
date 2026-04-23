@@ -9,11 +9,12 @@ export async function getServerSideProps(ctx) {
   return { props: {} };
 }
 
-// Logarithmic scale: slider 0–100 maps to VIX 5–80
-function sliderToVIX(s) { return Math.round(5 * Math.pow(16, s / 100)); }
-function vixToSlider(vix) { return Math.round(100 * Math.log(vix / 5) / Math.log(16)); }
+// Linear scale: slider 0–100 → VIX 10–30 (fine, even control)
+// Extremes unlock turbo: hold at 0 → slowly dips to 5; hold at 100 → slowly climbs to 80
+function sliderToVIX(s) { return 10 + Math.round(s * 0.2); }
+function vixToSlider(vix) { return Math.round((Math.max(10, Math.min(30, vix)) - 10) * 5); }
 
-// Slot machine number animation (used for results panel)
+// Slot machine animation for results panel
 function useSMN(target, duration = 1200) {
   const [display, setDisplay] = useState(null);
   const rafRef = useRef(null);
@@ -26,8 +27,7 @@ function useSMN(target, duration = 1200) {
       const elapsed = Date.now() - start;
       const progress = Math.min(elapsed / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
-      const current = endVal * eased;
-      setDisplay(current.toFixed(1));
+      setDisplay((endVal * eased).toFixed(1));
       if (progress < 1) rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -38,22 +38,83 @@ function useSMN(target, duration = 1200) {
 }
 
 export default function SimulateHike() {
-  // Slider internal state: 0–100 logarithmic scale
-  const [startSlider, setStartSlider] = useState(vixToSlider(15)); // ~40
-  const [endSlider, setEndSlider] = useState(vixToSlider(25));     // ~58
+  const [startSlider, setStartSlider] = useState(vixToSlider(15)); // 25
+  const [endSlider, setEndSlider] = useState(vixToSlider(20));     // 50
+  const [startTurboVIX, setStartTurboVIX] = useState(null);
+  const [endTurboVIX, setEndTurboVIX] = useState(null);
   const [step, setStep] = useState(1);
   const [result, setResult] = useState(null);
   const [calculating, setCalculating] = useState(false);
   const [gaugeAngle, setGaugeAngle] = useState(-90);
   const canvasRef = useRef(null);
 
-  // Derived VIX prices from slider positions
-  const startPrice = sliderToVIX(startSlider);
-  const endPrice = sliderToVIX(endSlider);
+  // Turbo refs — interval IDs and current value trackers
+  const startTurboRef = useRef(null);
+  const endTurboRef   = useRef(null);
+  const startTurboVal = useRef(30);
+  const endTurboVal   = useRef(30);
 
-  const jumpPct = endPrice > startPrice ? (((endPrice - startPrice) / startPrice) * 100) : 0;
+  // Derived VIX prices (turbo overrides linear if active)
+  const startPrice = startTurboVIX ?? sliderToVIX(startSlider);
+  const endPrice   = endTurboVIX   ?? sliderToVIX(endSlider);
+  const jumpPct    = endPrice > startPrice ? (((endPrice - startPrice) / startPrice) * 100) : 0;
+
   const animProb = useSMN(step === 4 && result ? result.probability : null, 1800);
   const animFreq = useSMN(step === 4 && result ? (result.instances > 0 ? Math.round(result.totalDays / result.instances) : 0) : null, 1800);
+
+  // Cleanup on unmount
+  useEffect(() => () => {
+    if (startTurboRef.current) clearInterval(startTurboRef.current);
+    if (endTurboRef.current)   clearInterval(endTurboRef.current);
+  }, []);
+
+  function launchTurbo(side, direction) {
+    const ref    = side === 'start' ? startTurboRef : endTurboRef;
+    const valRef = side === 'start' ? startTurboVal : endTurboVal;
+    const setter = side === 'start' ? setStartTurboVIX : setEndTurboVIX;
+    const floor  = 5, ceil = 80;
+    const step   = direction === 'up' ? 0.4 : -0.25;
+    if (ref.current) return;
+    ref.current = setInterval(() => {
+      valRef.current = direction === 'up'
+        ? Math.min(ceil, valRef.current + step)
+        : Math.max(floor, valRef.current + step);
+      setter(Math.round(valRef.current));
+      const done = direction === 'up' ? valRef.current >= ceil : valRef.current <= floor;
+      if (done) { clearInterval(ref.current); ref.current = null; }
+    }, 80);
+  }
+
+  function stopTurbo(side) {
+    const ref = side === 'start' ? startTurboRef : endTurboRef;
+    if (ref.current) { clearInterval(ref.current); ref.current = null; }
+  }
+
+  function clearTurbo(side) {
+    stopTurbo(side);
+    if (side === 'start') { setStartTurboVIX(null); startTurboVal.current = 30; }
+    else                  { setEndTurboVIX(null);   endTurboVal.current   = 30; }
+  }
+
+  function handleStartPointerDown() {
+    if (startSlider === 100) {
+      startTurboVal.current = startTurboVIX ?? 30;
+      launchTurbo('start', 'up');
+    } else if (startSlider === 0) {
+      startTurboVal.current = startTurboVIX ?? 10;
+      launchTurbo('start', 'down');
+    }
+  }
+
+  function handleEndPointerDown() {
+    if (endSlider === 100) {
+      endTurboVal.current = endTurboVIX ?? 30;
+      launchTurbo('end', 'up');
+    } else if (endSlider === 0) {
+      endTurboVal.current = endTurboVIX ?? 10;
+      launchTurbo('end', 'down');
+    }
+  }
 
   // Draw chart
   useEffect(() => {
@@ -66,73 +127,49 @@ export default function SimulateHike() {
     canvas.height = cssH * dpr;
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
-    const W = cssW;
-    const H = cssH;
+    const W = cssW, H = cssH;
     ctx.clearRect(0, 0, W, H);
-
     ctx.fillStyle = '#0a0a12';
     ctx.fillRect(0, 0, W, H);
-
     ctx.strokeStyle = '#1a1a2e';
     ctx.lineWidth = 1;
     for (let i = 0; i <= 4; i++) {
       const y = (i / 4) * H;
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     }
-
     if (step < 3) return;
 
-    const padX = 40;
-    const padY = 20;
-    const plotH = H - padY * 2;
-
+    const padX = 40, padY = 20, plotH = H - padY * 2;
     const minY = Math.min(startPrice, endPrice) - 3;
     const maxY = Math.max(startPrice, endPrice) + 3;
     const range = maxY - minY || 1;
-
     const toY = (p) => padY + (1 - (p - minY) / range) * plotH;
-    const startY = toY(startPrice);
-    const endY = toY(endPrice);
-    const startX = padX;
-    const endX = W - padX;
-    const midX = (startX + endX) / 2;
+    const startY = toY(startPrice), endY = toY(endPrice);
+    const startX = padX, endX = W - padX, midX = (startX + endX) / 2;
 
     const grad = ctx.createLinearGradient(0, endY, 0, startY + 20);
-    grad.addColorStop(0, 'rgba(74, 222, 128, 0.3)');
-    grad.addColorStop(1, 'rgba(74, 222, 128, 0.02)');
+    grad.addColorStop(0, 'rgba(74,222,128,0.3)');
+    grad.addColorStop(1, 'rgba(74,222,128,0.02)');
 
     ctx.beginPath();
     ctx.moveTo(startX, startY);
     ctx.bezierCurveTo(midX, startY, midX, endY, endX, endY);
-    ctx.strokeStyle = '#4ade80';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
+    ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2.5; ctx.stroke();
 
     ctx.beginPath();
     ctx.moveTo(startX, startY);
     ctx.bezierCurveTo(midX, startY, midX, endY, endX, endY);
-    ctx.lineTo(endX, H);
-    ctx.lineTo(startX, H);
-    ctx.closePath();
-    ctx.fillStyle = grad;
-    ctx.fill();
+    ctx.lineTo(endX, H); ctx.lineTo(startX, H); ctx.closePath();
+    ctx.fillStyle = grad; ctx.fill();
 
-    ctx.beginPath();
-    ctx.arc(startX, startY, 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#4ade80';
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(startX, startY, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#4ade80'; ctx.fill();
+    ctx.beginPath(); ctx.arc(endX, endY, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.fill();
 
-    ctx.beginPath();
-    ctx.arc(endX, endY, 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff';
-    ctx.fill();
-
-    ctx.fillStyle = '#4ade80';
-    ctx.font = 'bold 12px monospace';
-    ctx.textAlign = 'left';
+    ctx.fillStyle = '#4ade80'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'left';
     ctx.fillText(startPrice.toFixed(1), startX + 8, startY - 8);
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'right';
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'right';
     ctx.fillText(endPrice.toFixed(1), endX - 8, endY - 8);
   }, [startPrice, endPrice, step]);
 
@@ -143,8 +180,7 @@ export default function SimulateHike() {
     const animate = (ts) => {
       if (!start) start = ts;
       const progress = Math.min((ts - start) / 1800, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setGaugeAngle(-90 + eased * (result.probability / 100) * 180);
+      setGaugeAngle(-90 + (1 - Math.pow(1 - progress, 3)) * (result.probability / 100) * 180);
       if (progress < 1) requestAnimationFrame(animate);
     };
     requestAnimationFrame(animate);
@@ -156,26 +192,25 @@ export default function SimulateHike() {
     try {
       const res = await fetch(`/api/algorithm?jump=${jumpPct.toFixed(2)}`);
       const data = await res.json();
-      setResult(data);
-      setStep(4);
-      setGaugeAngle(-90);
+      setResult(data); setStep(4); setGaugeAngle(-90);
     } catch {}
     setCalculating(false);
   }
 
   function reset() {
-    setStep(1);
-    setResult(null);
-    setStartSlider(vixToSlider(15));
-    setEndSlider(vixToSlider(25));
+    clearTurbo('start'); clearTurbo('end');
+    setStep(1); setResult(null);
+    setStartSlider(vixToSlider(15)); setEndSlider(vixToSlider(20));
     setGaugeAngle(-90);
   }
 
-  const gaugeColor =
-    result == null ? '#6366f1'
+  const gaugeColor = result == null ? '#6366f1'
     : result.probability >= 60 ? '#4ade80'
-    : result.probability >= 30 ? '#facc15'
-    : '#f87171';
+    : result.probability >= 30 ? '#facc15' : '#f87171';
+
+  // Turbo indicator label for slider display
+  const startIsTurbo = startTurboVIX !== null;
+  const endIsTurbo   = endTurboVIX   !== null;
 
   return (
     <Layout>
@@ -193,8 +228,7 @@ export default function SimulateHike() {
         <div style={{ display: 'flex', gap: '8px', marginBottom: '28px' }}>
           {['Set start price', 'Set end price', 'Review hike', 'Results'].map((label, i) => {
             const s = i + 1;
-            const done = step > s;
-            const active = step === s;
+            const done = step > s, active = step === s;
             return (
               <div key={s} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <div style={{
@@ -206,72 +240,69 @@ export default function SimulateHike() {
                 }}>
                   {done ? '✓' : s}
                 </div>
-                <span style={{ fontSize: '11px', color: active ? '#fff' : done ? '#4ade80' : '#444' }}>
-                  {label}
-                </span>
+                <span style={{ fontSize: '11px', color: active ? '#fff' : done ? '#4ade80' : '#444' }}>{label}</span>
                 {i < 3 && <div style={{ width: '20px', height: '1px', background: '#1e1e3a' }} />}
               </div>
             );
           })}
         </div>
 
-        {/* Main interaction area */}
         <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch' }}>
 
-          {/* Left scrollbar — start price */}
+          {/* Left slider — start price */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
             <div style={{ fontSize: '10px', color: step === 1 ? '#e53e3e' : '#444', textAlign: 'center', letterSpacing: '0.05em' }}>
               START
             </div>
-            <div style={{
-              fontSize: '16px', fontWeight: 'bold',
-              color: step >= 1 ? '#fff' : '#333',
-              minWidth: '36px', textAlign: 'center',
-            }}>
+            <div style={{ fontSize: '16px', fontWeight: 'bold', color: step >= 1 ? (startIsTurbo ? '#facc15' : '#fff') : '#333', minWidth: '36px', textAlign: 'center' }}>
               {startPrice}
+              {startIsTurbo && <span style={{ fontSize: '9px', color: '#facc15', display: 'block', marginTop: '-2px' }}>TURBO</span>}
             </div>
             <input
               type="range" min="0" max="100" step="1"
               value={startSlider}
+              onPointerDown={handleStartPointerDown}
+              onPointerUp={() => stopTurbo('start')}
               onChange={(e) => {
                 const s = parseInt(e.target.value);
                 setStartSlider(s);
-                const newStart = sliderToVIX(s);
-                if (endPrice <= newStart) setEndSlider(Math.min(100, s + 8));
+                if (s === 100) {
+                  startTurboVal.current = startTurboVIX ?? 30;
+                  launchTurbo('start', 'up');
+                } else if (s === 0) {
+                  startTurboVal.current = startTurboVIX ?? 10;
+                  launchTurbo('start', 'down');
+                } else {
+                  clearTurbo('start');
+                }
+                const newStart = s === 100 ? (startTurboVIX ?? 30) : sliderToVIX(s);
+                if (endPrice <= newStart) { clearTurbo('end'); setEndSlider(Math.min(100, s + 15)); }
                 if (step === 1) setStep(2);
                 if (step >= 3) setStep(3);
                 setResult(null);
               }}
               style={{
-                writingMode: 'vertical-lr',
-                direction: 'rtl',
-                height: '240px',
-                accentColor: '#e53e3e',
-                cursor: 'pointer',
-                opacity: step === 4 ? 0.4 : 1,
+                writingMode: 'vertical-lr', direction: 'rtl',
+                height: '240px', accentColor: startIsTurbo ? '#facc15' : '#e53e3e',
+                cursor: 'pointer', opacity: step === 4 ? 0.4 : 1,
               }}
               disabled={step === 4}
             />
             <div style={{ fontSize: '10px', color: '#333' }}>VIX</div>
+            <div style={{ fontSize: '9px', color: '#333', textAlign: 'center', maxWidth: '44px', lineHeight: 1.3 }}>
+              hold top for↑80
+            </div>
           </div>
 
           {/* Chart area */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {step === 1 && (
-              <div style={{
-                background: '#1a1a2e', border: '1px solid #e53e3e',
-                borderRadius: '8px', padding: '10px 14px',
-                fontSize: '12px', color: '#ccc', textAlign: 'center',
-              }}>
+              <div style={{ background: '#1a1a2e', border: '1px solid #e53e3e', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#ccc', textAlign: 'center' }}>
                 Drag the <span style={{ color: '#e53e3e' }}>left bar</span> to set the VIX starting price
               </div>
             )}
             {step === 2 && (
-              <div style={{
-                background: '#1a1a2e', border: '1px solid #e53e3e',
-                borderRadius: '8px', padding: '10px 14px',
-                fontSize: '12px', color: '#ccc', textAlign: 'center',
-              }}>
+              <div style={{ background: '#1a1a2e', border: '1px solid #e53e3e', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#ccc', textAlign: 'center' }}>
                 Now drag the <span style={{ color: '#fff' }}>right bar</span> to set the ending price
               </div>
             )}
@@ -289,56 +320,29 @@ export default function SimulateHike() {
               </div>
             )}
             {step === 4 && (
-              <div style={{
-                background: '#0f1a0f', border: '1px solid #4ade80',
-                borderRadius: '8px', padding: '6px 14px',
-                fontSize: '12px', color: '#4ade80', textAlign: 'center',
-              }}>
+              <div style={{ background: '#0f1a0f', border: '1px solid #4ade80', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', color: '#4ade80', textAlign: 'center' }}>
                 Simulated hike: <strong>+{jumpPct.toFixed(1)}%</strong> (from {startPrice} → {endPrice})
               </div>
             )}
 
-            <canvas
-              ref={canvasRef}
-              style={{
-                width: '100%', height: '240px', borderRadius: '10px',
-                border: '1px solid #1a1a2e', display: 'block',
-              }}
-            />
+            <canvas ref={canvasRef} style={{ width: '100%', height: '240px', borderRadius: '10px', border: '1px solid #1a1a2e', display: 'block' }} />
 
-            {/* Results panel */}
             {step === 4 && result && (
-              <div style={{
-                background: '#0f0f1a', border: '1px solid #1a1a2e',
-                borderRadius: '12px', padding: '20px',
-                display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap',
-              }}>
-                {/* Gauge */}
+              <div style={{ background: '#0f0f1a', border: '1px solid #1a1a2e', borderRadius: '12px', padding: '20px', display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                   <div style={{ fontSize: '11px', color: '#555' }}>Your reversion probability</div>
                   <svg width="140" height="80" viewBox="0 0 140 80">
                     <path d="M 10 75 A 60 60 0 0 1 130 75" fill="none" stroke="#1e1e3a" strokeWidth="10" strokeLinecap="round" />
-                    <path
-                      d="M 10 75 A 60 60 0 0 1 130 75"
-                      fill="none"
-                      stroke={gaugeColor}
-                      strokeWidth="10"
-                      strokeLinecap="round"
-                      strokeDasharray={`${Math.PI * 60 * (result.probability / 100)} ${Math.PI * 60}`}
-                    />
-                    <line
-                      x1="70" y1="75"
+                    <path d="M 10 75 A 60 60 0 0 1 130 75" fill="none" stroke={gaugeColor} strokeWidth="10" strokeLinecap="round"
+                      strokeDasharray={`${Math.PI * 60 * (result.probability / 100)} ${Math.PI * 60}`} />
+                    <line x1="70" y1="75"
                       x2={70 + 48 * Math.cos((gaugeAngle * Math.PI) / 180)}
                       y2={75 + 48 * Math.sin((gaugeAngle * Math.PI) / 180)}
-                      stroke="#fff" strokeWidth="2" strokeLinecap="round"
-                    />
+                      stroke="#fff" strokeWidth="2" strokeLinecap="round" />
                     <circle cx="70" cy="75" r="4" fill="#fff" />
-                    <text x="70" y="68" textAnchor="middle" fill={gaugeColor} fontSize="15" fontWeight="bold" fontFamily="monospace">
-                      {animProb}%
-                    </text>
+                    <text x="70" y="68" textAnchor="middle" fill={gaugeColor} fontSize="15" fontWeight="bold" fontFamily="monospace">{animProb}%</text>
                   </svg>
                 </div>
-
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ background: '#1a1a2e', borderRadius: '8px', padding: '12px 16px' }}>
                     <div style={{ fontSize: '11px', color: '#444', marginBottom: '4px' }}>Happens once every</div>
@@ -361,41 +365,52 @@ export default function SimulateHike() {
             )}
           </div>
 
-          {/* Right scrollbar — end price */}
+          {/* Right slider — end price */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
             <div style={{ fontSize: '10px', color: step === 2 ? '#fff' : '#444', textAlign: 'center', letterSpacing: '0.05em' }}>
               END
             </div>
-            <div style={{
-              fontSize: '16px', fontWeight: 'bold',
-              color: step >= 2 ? '#fff' : '#333',
-              minWidth: '36px', textAlign: 'center',
-            }}>
+            <div style={{ fontSize: '16px', fontWeight: 'bold', color: step >= 2 ? (endIsTurbo ? '#facc15' : '#fff') : '#333', minWidth: '36px', textAlign: 'center' }}>
               {endPrice}
+              {endIsTurbo && <span style={{ fontSize: '9px', color: '#facc15', display: 'block', marginTop: '-2px' }}>TURBO</span>}
             </div>
             <input
               type="range" min="0" max="100" step="1"
               value={endSlider}
+              onPointerDown={handleEndPointerDown}
+              onPointerUp={() => stopTurbo('end')}
               onChange={(e) => {
                 const s = parseInt(e.target.value);
-                const newEnd = sliderToVIX(s);
-                if (newEnd <= startPrice) return;
-                setEndSlider(s);
+                if (s === 100) {
+                  setEndSlider(s);
+                  endTurboVal.current = endTurboVIX ?? 30;
+                  launchTurbo('end', 'up');
+                } else if (s === 0) {
+                  setEndSlider(s);
+                  endTurboVal.current = endTurboVIX ?? 10;
+                  launchTurbo('end', 'down');
+                } else {
+                  const newEnd = sliderToVIX(s);
+                  if (newEnd <= startPrice) return;
+                  setEndSlider(s);
+                  clearTurbo('end');
+                }
                 if (step === 2) setStep(3);
                 if (step >= 3) setStep(3);
                 setResult(null);
               }}
               style={{
-                writingMode: 'vertical-lr',
-                direction: 'rtl',
-                height: '240px',
-                accentColor: '#fff',
+                writingMode: 'vertical-lr', direction: 'rtl',
+                height: '240px', accentColor: endIsTurbo ? '#facc15' : '#fff',
                 cursor: step < 2 ? 'not-allowed' : 'pointer',
                 opacity: step < 2 ? 0.2 : step === 4 ? 0.4 : 1,
               }}
               disabled={step < 2 || step === 4}
             />
             <div style={{ fontSize: '10px', color: '#333' }}>VIX</div>
+            <div style={{ fontSize: '9px', color: '#333', textAlign: 'center', maxWidth: '44px', lineHeight: 1.3 }}>
+              hold top for↑80
+            </div>
           </div>
         </div>
 
@@ -406,32 +421,22 @@ export default function SimulateHike() {
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
             {step === 4 && (
-              <button onClick={reset} style={{
-                padding: '12px 24px', background: 'transparent',
-                border: '1px solid #333', borderRadius: '8px',
-                color: '#666', cursor: 'pointer', fontSize: '13px',
-                fontFamily: 'monospace',
-              }}>
+              <button onClick={reset} style={{ padding: '12px 24px', background: 'transparent', border: '1px solid #333', borderRadius: '8px', color: '#666', cursor: 'pointer', fontSize: '13px', fontFamily: 'monospace' }}>
                 RESET
               </button>
             )}
             {step >= 3 && step < 4 && (
-              <button
-                onClick={calculate}
-                disabled={calculating}
-                style={{
-                  padding: '14px 32px',
-                  background: calculating ? '#1a2e1a' : '#22c55e',
-                  border: 'none', borderRadius: '8px',
-                  color: calculating ? '#4ade80' : '#000',
-                  cursor: calculating ? 'wait' : 'pointer',
-                  fontSize: '14px', fontWeight: 'bold',
-                  fontFamily: 'monospace',
-                  letterSpacing: '0.05em',
-                  boxShadow: calculating ? 'none' : '0 0 20px rgba(34,197,94,0.4)',
-                  transition: 'all 0.2s',
-                }}
-              >
+              <button onClick={calculate} disabled={calculating} style={{
+                padding: '14px 32px',
+                background: calculating ? '#1a2e1a' : '#22c55e',
+                border: 'none', borderRadius: '8px',
+                color: calculating ? '#4ade80' : '#000',
+                cursor: calculating ? 'wait' : 'pointer',
+                fontSize: '14px', fontWeight: 'bold', fontFamily: 'monospace',
+                letterSpacing: '0.05em',
+                boxShadow: calculating ? 'none' : '0 0 20px rgba(34,197,94,0.4)',
+                transition: 'all 0.2s',
+              }}>
                 {calculating ? 'CALCULATING…' : 'CALCULATE NOW'}
               </button>
             )}

@@ -1,116 +1,57 @@
 import { getSession } from 'next-auth/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 
-function MatrixYoga() {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const W = 260, H = 300;
-    canvas.width = W;
-    canvas.height = H;
-    const ctx = canvas.getContext('2d');
-
-    // Draw meditation figure programmatically to offscreen canvas
-    const off = document.createElement('canvas');
-    off.width = W; off.height = H;
-    const offCtx = off.getContext('2d');
-    offCtx.fillStyle = 'white';
-
-    const cx = W / 2;
-
-    // Head
-    offCtx.beginPath();
-    offCtx.arc(cx, 60, 28, 0, Math.PI * 2);
-    offCtx.fill();
-
-    // Neck
-    offCtx.fillRect(cx - 7, 86, 14, 16);
-
-    // Torso
-    offCtx.beginPath();
-    offCtx.ellipse(cx, 148, 30, 50, 0, 0, Math.PI * 2);
-    offCtx.fill();
-
-    // Left arm (out and slightly downward — hands resting on knees)
-    offCtx.beginPath();
-    offCtx.ellipse(cx - 64, 142, 46, 14, 0.15, 0, Math.PI * 2);
-    offCtx.fill();
-
-    // Right arm
-    offCtx.beginPath();
-    offCtx.ellipse(cx + 64, 142, 46, 14, -0.15, 0, Math.PI * 2);
-    offCtx.fill();
-
-    // Cross-legged base
-    offCtx.beginPath();
-    offCtx.ellipse(cx, 228, 80, 40, 0, 0, Math.PI * 2);
-    offCtx.fill();
-
-    // Left knee bump
-    offCtx.beginPath();
-    offCtx.ellipse(cx - 52, 240, 20, 14, -0.3, 0, Math.PI * 2);
-    offCtx.fill();
-
-    // Right knee bump
-    offCtx.beginPath();
-    offCtx.ellipse(cx + 52, 240, 20, 14, 0.3, 0, Math.PI * 2);
-    offCtx.fill();
-
-    const imgData = offCtx.getImageData(0, 0, W, H);
-
-    function alpha(x, y) {
-      const xi = Math.round(x), yi = Math.round(y);
-      if (xi < 0 || xi >= W || yi < 0 || yi >= H) return 0;
-      return imgData.data[(yi * W + xi) * 4 + 3];
-    }
-
-    const chars = '0123456789';
-    const fs = 11;
-    const cols = Math.floor(W / fs);
-    const drops = Array.from({ length: cols }, () => -Math.random() * H * 1.5);
-
-    function draw() {
-      // Match page background #0a0a12 = rgb(10,10,18) for seamless blending
-      ctx.fillStyle = 'rgba(10,10,18,0.07)';
-      ctx.fillRect(0, 0, W, H);
-      ctx.font = `${fs}px monospace`;
-
-      for (let i = 0; i < cols; i++) {
-        const x = i * fs + fs / 2;
-        const y = drops[i];
-        const a = alpha(x, y);
-        const inBody = a > 60;
-        const char = chars[Math.floor(Math.random() * chars.length)];
-
-        if (inBody) {
-          const brightness = 0.55 + (a / 255) * 0.45;
-          ctx.fillStyle = `rgba(180,255,180,${brightness})`;
-          ctx.fillText(char, x, y);
-          // Bright leading digit
-          ctx.fillStyle = 'rgba(255,255,255,0.92)';
-          ctx.fillText(char, x, y);
-        } else {
-          ctx.fillStyle = 'rgba(0,160,0,0.38)';
-          ctx.fillText(char, x, y);
-        }
-
-        drops[i] += fs * 0.65;
-        if (drops[i] > H + fs * 3) drops[i] = -fs * (5 + Math.random() * 15);
-      }
-    }
-
-    const id = setInterval(draw, 55);
-    return () => clearInterval(id);
-  }, []);
-
+function FloatingYogi() {
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ width: '260px', height: '300px', borderRadius: '12px', opacity: 0.92 }}
-    />
+    <>
+      <style>{`
+        @keyframes yogi-float {
+          0%, 100% { transform: translateY(0px); filter: drop-shadow(0 0 10px rgba(74,222,128,0.35)); }
+          50%       { transform: translateY(-22px); filter: drop-shadow(0 0 22px rgba(74,222,128,0.6)); }
+        }
+        @keyframes yogi-aura {
+          0%, 100% { opacity: 0.12; }
+          50%       { opacity: 0.28; }
+        }
+        .yogi-body { animation: yogi-float 4s ease-in-out infinite; }
+        .yogi-aura { animation: yogi-aura 4s ease-in-out infinite; }
+      `}</style>
+      <div className="yogi-body">
+        <svg width="150" height="170" viewBox="0 0 150 170" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* Outer aura rings */}
+          <circle className="yogi-aura" cx="75" cy="34" r="44" stroke="#4ade80" strokeWidth="0.6" />
+          <circle className="yogi-aura" cx="75" cy="34" r="34" stroke="#4ade80" strokeWidth="1" />
+
+          {/* Head */}
+          <circle cx="75" cy="34" r="17" stroke="#4ade80" strokeWidth="2.5" />
+
+          {/* Neck */}
+          <line x1="75" y1="51" x2="75" y2="62" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" />
+
+          {/* Torso */}
+          <line x1="75" y1="62" x2="75" y2="104" stroke="#4ade80" strokeWidth="3" strokeLinecap="round" />
+
+          {/* Left arm — angled out, hand resting on knee */}
+          <line x1="75" y1="72" x2="34" y2="90" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" />
+          <circle cx="34" cy="90" r="4" fill="#4ade80" />
+
+          {/* Right arm */}
+          <line x1="75" y1="72" x2="116" y2="90" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" />
+          <circle cx="116" cy="90" r="4" fill="#4ade80" />
+
+          {/* Left leg — curves down-left */}
+          <path d="M 75 104 C 58 114 38 120 22 142" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" />
+          {/* Left foot crosses to right side */}
+          <path d="M 22 142 C 40 134 60 130 82 136" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" />
+
+          {/* Right leg — curves down-right */}
+          <path d="M 75 104 C 92 114 112 120 128 142" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" />
+          {/* Right foot crosses to left side */}
+          <path d="M 128 142 C 110 134 90 130 68 136" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </div>
+    </>
   );
 }
 
@@ -166,7 +107,7 @@ export default function LiveTrades() {
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             minHeight: '50vh', gap: '16px',
           }}>
-            <MatrixYoga />
+            <FloatingYogi />
             <div style={{ fontSize: '22px', color: '#4ade80', fontWeight: 'bold', letterSpacing: '0.08em', marginTop: '8px' }}>
               VIX IS CHILLING
             </div>
