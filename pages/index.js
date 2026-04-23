@@ -38,6 +38,7 @@ export default function Dashboard() {
   const [change2d, setChange2d] = useState(null);
   const [open2d, setOpen2d] = useState(null);
   const [tickerDisplay, setTickerDisplay] = useState('VIX');
+  const [spikeData, setSpikeData] = useState(null);
   const [chartPoints, setChartPoints] = useState([]);
   const [message, setMessage] = useState('');
   const [sendStatus, setSendStatus] = useState('');
@@ -73,11 +74,22 @@ export default function Dashboard() {
     } catch {}
   }
 
+  async function fetchSpikeStatus() {
+    try {
+      const res = await fetch('/api/spike-status');
+      if (!res.ok) return;
+      const data = await res.json();
+      setSpikeData(data);
+    } catch {}
+  }
+
   useEffect(() => {
     fetchPrice();
     fetchLog();
+    fetchSpikeStatus();
     const id = setInterval(fetchPrice, 30000);
-    return () => clearInterval(id);
+    const spikeId = setInterval(fetchSpikeStatus, 60000);
+    return () => { clearInterval(id); clearInterval(spikeId); };
   }, []);
 
   // Draw 2-day chart
@@ -277,6 +289,27 @@ export default function Dashboard() {
               {open2d != null && (
                 <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
                   2-day open: ${open2d.toFixed(2)}
+                </div>
+              )}
+            </div>
+
+            {/* Spike indicator */}
+            <div style={{ paddingTop: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px', letterSpacing: '0.08em' }}>
+                SPIKE ALERT
+              </div>
+              {spikeData?.alerted ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <style>{`@keyframes blink-spike { 0%,100%{opacity:1} 50%{opacity:0.2} }`}</style>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ff4444', display: 'inline-block', animation: 'blink-spike 1s ease-in-out infinite' }} />
+                  <span style={{ fontSize: '13px', color: '#ff4444', fontWeight: 'bold', animation: 'blink-spike 1s ease-in-out infinite' }}>
+                    SPIKE TODAY +{spikeData.pctMove}%
+                  </span>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#333', display: 'inline-block' }} />
+                  <span style={{ fontSize: '13px', color: '#444' }}>No spike today</span>
                 </div>
               )}
             </div>
