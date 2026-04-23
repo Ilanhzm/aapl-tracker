@@ -81,6 +81,42 @@ exports.handler = schedule('*/15 13-20 * * 1-5', async () => {
 
     await addLogEntry(message, 'scheduled', 'Spike alert');
 
+    // --- AI event context: what caused this spike? ---
+    if (process.env.PERPLEXITY_API_KEY) {
+      try {
+        const ctxRes = await fetch('https://api.perplexity.ai/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'sonar',
+            messages: [{
+              role: 'user',
+              content: `Today is ${today}. The VIX volatility index just spiked over 20% in 2 days. What specific news event or world development is driving this stock market fear right now? Be specific and brief — 2 to 3 sentences only.`,
+            }],
+            max_tokens: 220,
+          }),
+        });
+        const ctxData = await ctxRes.json();
+        const context = ctxData.choices?.[0]?.message?.content?.trim();
+        if (context) {
+          await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: process.env.TELEGRAM_CHAT_ID,
+              text: `📰 WHY IT'S HAPPENING:\n${context}`,
+            }),
+          });
+        }
+      } catch (err) {
+        console.error('Perplexity context failed:', err.message);
+        // Non-fatal — spike alert already sent
+      }
+    }
+
     // Save spike record (now includes option data for EOD logger to pick up)
     await fetch(`${siteUrl}/api/spike-status`, {
       method: 'POST',
