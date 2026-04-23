@@ -37,6 +37,7 @@ export default function Dashboard() {
   const [price, setPrice] = useState(null);
   const [change2d, setChange2d] = useState(null);
   const [open2d, setOpen2d] = useState(null);
+  const [tickerDisplay, setTickerDisplay] = useState('VIX');
   const [chartPoints, setChartPoints] = useState([]);
   const [message, setMessage] = useState('');
   const [sendStatus, setSendStatus] = useState('');
@@ -58,6 +59,7 @@ export default function Dashboard() {
       setChange2d(data.change2d);
       setOpen2d(data.open2d);
       setChartPoints(data.chartPoints || []);
+      if (data.tickerDisplay) setTickerDisplay(data.tickerDisplay);
       setLastUpdated(new Date().toLocaleTimeString());
     } catch {}
   }
@@ -251,7 +253,7 @@ export default function Dashboard() {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '32px', flexWrap: 'wrap', marginBottom: '20px' }}>
             <div>
               <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px', letterSpacing: '0.08em' }}>
-                AAPL — LIVE PRICE (VIX placeholder)
+                {tickerDisplay} — LIVE PRICE
               </div>
               <div style={{ fontSize: '56px', fontWeight: 'bold', lineHeight: 1, color: '#fff' }}>
                 {price != null ? `$${price.toFixed(2)}` : '—'}

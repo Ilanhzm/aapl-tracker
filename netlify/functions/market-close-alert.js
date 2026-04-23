@@ -3,8 +3,10 @@ const { addLogEntry } = require('./_log');
 
 exports.handler = schedule('30 20 * * 1-5', async () => {
   try {
+    const ticker = encodeURIComponent(process.env.PRICE_TICKER || '^VIX');
+    const tickerDisplay = process.env.TICKER_DISPLAY || process.env.PRICE_TICKER || 'VIX';
     const url =
-      'https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=5m&range=1d';
+      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=5m&range=1d`;
     const response = await fetch(url, {
       headers: {
         'User-Agent':
@@ -18,7 +20,7 @@ exports.handler = schedule('30 20 * * 1-5', async () => {
     const change = (((price - open) / open) * 100).toFixed(2);
     const direction = price >= open ? '▲' : '▼';
 
-    const message = `AAPL - Market Closed\nClosing price: $${price}\n${direction} ${change}% today (opened at $${open})`;
+    const message = `${tickerDisplay} - Market Closed\nClosing price: ${price}\n${direction} ${change}% today (opened at ${open})`;
 
     await fetch(
       `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
