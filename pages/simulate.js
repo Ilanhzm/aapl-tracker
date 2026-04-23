@@ -234,7 +234,7 @@ export default function SimulateHike() {
               {startPrice.toFixed(0)}
             </div>
             <input
-              type="range" min="5" max="95" step="1"
+              type="range" min="5" max="80" step="1"
               value={startPrice}
               onChange={(e) => {
                 const v = parseFloat(e.target.value);
@@ -379,7 +379,7 @@ export default function SimulateHike() {
               {endPrice.toFixed(0)}
             </div>
             <input
-              type="range" min="5" max="100" step="1"
+              type="range" min="5" max="80" step="1"
               value={endPrice}
               onChange={(e) => {
                 const v = Math.max(parseFloat(e.target.value), startPrice + 1);
@@ -441,8 +441,10 @@ export default function SimulateHike() {
           </div>
         </div>
 
-        <div style={{ marginTop: '24px', fontSize: '11px', color: '#2a2a4a', textAlign: 'center' }}>
+        <div style={{ marginTop: '24px', fontSize: '11px', color: '#444', textAlign: 'center', lineHeight: 1.8 }}>
           Based on daily VIX closing prices · Jan 1990 – Apr 2026 · reversion window: 10 trading days
+          <br />
+          <span style={{ color: '#2a2a4a' }}>VIX typical range: 10–30 · Stressed markets: 30–50 · Crisis peaks (2008, COVID): 50–89</span>
         </div>
       </div>
     </Layout>

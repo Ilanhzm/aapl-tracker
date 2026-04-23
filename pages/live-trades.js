@@ -1,6 +1,80 @@
 import { getSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
+
+function MatrixYoga() {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const W = 260, H = 300;
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // Render yoga emoji to offscreen canvas to get silhouette mask
+    const off = document.createElement('canvas');
+    off.width = W; off.height = H;
+    const offCtx = off.getContext('2d');
+    offCtx.font = `${H * 0.78}px serif`;
+    offCtx.textAlign = 'center';
+    offCtx.textBaseline = 'middle';
+    offCtx.fillStyle = 'white';
+    offCtx.fillText('🧘', W / 2, H / 2 + 10);
+    const imgData = offCtx.getImageData(0, 0, W, H);
+
+    function alpha(x, y) {
+      const xi = Math.round(x), yi = Math.round(y);
+      if (xi < 0 || xi >= W || yi < 0 || yi >= H) return 0;
+      return imgData.data[(yi * W + xi) * 4 + 3];
+    }
+
+    const chars = 'アイウエオカキクサシスタチツテ01234567ナニヌ9#@';
+    const fs = 11;
+    const cols = Math.floor(W / fs);
+    const drops = Array.from({ length: cols }, () => -Math.random() * H * 1.5);
+
+    function draw() {
+      ctx.fillStyle = 'rgba(0,0,0,0.045)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.font = `${fs}px monospace`;
+
+      for (let i = 0; i < cols; i++) {
+        const x = i * fs + fs / 2;
+        const y = drops[i];
+        const a = alpha(x, y);
+        const inBody = a > 80;
+        const char = chars[Math.floor(Math.random() * chars.length)];
+
+        if (inBody) {
+          // Head of column inside silhouette → white
+          ctx.fillStyle = `rgba(220,255,220,${0.6 + (a / 255) * 0.4})`;
+          ctx.fillText(char, x, y);
+          // Bright leading dot
+          ctx.fillStyle = 'rgba(255,255,255,0.95)';
+          ctx.fillText(char, x, y);
+        } else {
+          ctx.fillStyle = 'rgba(0,140,0,0.45)';
+          ctx.fillText(char, x, y);
+        }
+
+        drops[i] += fs * 0.65;
+        if (drops[i] > H + fs * 3) drops[i] = -fs * (5 + Math.random() * 15);
+      }
+    }
+
+    const id = setInterval(draw, 55);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ width: '260px', height: '300px', borderRadius: '12px', opacity: 0.9 }}
+    />
+  );
+}
 
 export async function getServerSideProps(ctx) {
   const session = await getSession({ req: ctx.req });
@@ -54,11 +128,11 @@ export default function LiveTrades() {
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             minHeight: '50vh', gap: '16px',
           }}>
-            <div style={{ fontSize: '64px', opacity: 0.4 }}>🧘</div>
-            <div style={{ fontSize: '22px', color: '#555', fontWeight: 'bold', letterSpacing: '0.06em' }}>
+            <MatrixYoga />
+            <div style={{ fontSize: '22px', color: '#4ade80', fontWeight: 'bold', letterSpacing: '0.08em', marginTop: '8px' }}>
               VIX IS CHILLING
             </div>
-            <div style={{ fontSize: '13px', color: '#444', textAlign: 'center', lineHeight: 1.6 }}>
+            <div style={{ fontSize: '13px', color: '#555', textAlign: 'center', lineHeight: 1.6 }}>
               No active spike trades detected.
               <br />Spike checks run every 15 min during market hours.
             </div>

@@ -1,6 +1,7 @@
 import { getSession } from 'next-auth/react';
 import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
+import Odometer from '../components/Odometer';
 
 export async function getServerSideProps(ctx) {
   const session = await getSession({ req: ctx.req });
@@ -267,9 +268,7 @@ export default function Dashboard() {
               <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px', letterSpacing: '0.08em' }}>
                 {tickerDisplay} — LIVE PRICE
               </div>
-              <div style={{ fontSize: '56px', fontWeight: 'bold', lineHeight: 1, color: '#fff' }}>
-                {price != null ? `$${price.toFixed(2)}` : '—'}
-              </div>
+              <Odometer value={price != null ? price.toFixed(2) : null} fontSize={56} color="#fff" />
             </div>
 
             {/* 2-day % change — SMN style */}
@@ -279,12 +278,12 @@ export default function Dashboard() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ fontSize: '13px', color: themeAccent }}>{isUp ? '▲' : '▼'}</span>
-                <span style={{
-                  fontSize: '40px', fontWeight: 'bold',
-                  color: themeAccent, fontVariantNumeric: 'tabular-nums',
-                }}>
-                  {animChange}%
-                </span>
+                <Odometer
+                  value={change2d !== null ? Math.abs(change2d).toFixed(2) : null}
+                  fontSize={40}
+                  color={themeAccent}
+                />
+                <span style={{ fontSize: '32px', fontWeight: 'bold', color: themeAccent }}>%</span>
               </div>
               {open2d != null && (
                 <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>

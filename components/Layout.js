@@ -55,6 +55,7 @@ export default function Layout({ children }) {
                   background: active ? '#1a1a2e' : 'transparent',
                   borderLeft: active ? '3px solid #e53e3e' : '3px solid transparent',
                   transition: 'color 0.15s',
+                  fontWeight: isLiveTrades ? 'bold' : 'normal',
                 }}>
                 {label}
               </Link>
