@@ -49,8 +49,8 @@ export default function Dashboard() {
   const dotCanvasRef = useRef(null);
   const lastPointRef = useRef(null);
 
-  const animChange = useSMN(change2d !== null ? Math.abs(change2d) : null);
   const isUp = change2d !== null && change2d >= 0;
+  const spikeActive = spikeData?.alerted;
 
   async function fetchPrice() {
     try {
@@ -85,38 +85,34 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    fetchPrice();
-    fetchLog();
-    fetchSpikeStatus();
+    fetchPrice(); fetchLog(); fetchSpikeStatus();
     const id = setInterval(fetchPrice, 30000);
     const spikeId = setInterval(fetchSpikeStatus, 60000);
     return () => { clearInterval(id); clearInterval(spikeId); };
   }, []);
 
-  // Draw 2-day chart
+  // Draw chart
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || chartPoints.length < 2) return;
-
     const dpr = window.devicePixelRatio || 1;
-    const cssW = canvas.clientWidth || 860;
-    const cssH = canvas.clientHeight || 260;
+    const cssW = canvas.clientWidth || 900;
+    const cssH = canvas.clientHeight || 320;
     canvas.width = cssW * dpr;
     canvas.height = cssH * dpr;
-
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
-    const W = cssW;
-    const H = cssH;
-    const pad = { top: 20, right: 20, bottom: 36, left: 64 };
+    const W = cssW, H = cssH;
+    const pad = { top: 20, right: 24, bottom: 40, left: 68 };
 
     ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = 'transparent';
+    ctx.fillRect(0, 0, W, H);
 
     const prices = chartPoints.map((p) => p.price);
     const minP = Math.min(...prices);
     const maxP = Math.max(...prices);
     const pRange = maxP - minP || 1;
-
     const tMin = chartPoints[0].time;
     const tMax = chartPoints[chartPoints.length - 1].time;
     const tRange = tMax - tMin || 1;
@@ -124,35 +120,35 @@ export default function Dashboard() {
     const toX = (t) => pad.left + ((t - tMin) / tRange) * (W - pad.left - pad.right);
     const toY = (p) => H - pad.bottom - ((p - minP) / pRange) * (H - pad.top - pad.bottom);
 
-    ctx.fillStyle = '#07080f';
-    ctx.fillRect(0, 0, W, H);
+    const lineRgb = isUp ? '0,232,122' : '255,51,86';
 
-    const lineColor = isUp ? '34,212,123' : '240,81,94';
-
-    // Grid lines
-    for (let i = 0; i <= 5; i++) {
-      const y = pad.top + (i / 5) * (H - pad.top - pad.bottom);
-      const pVal = maxP - (i / 5) * pRange;
-      ctx.strokeStyle = '#1a1d35';
+    // Horizontal grid lines
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.top + (i / 4) * (H - pad.top - pad.bottom);
+      const pVal = maxP - (i / 4) * pRange;
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
       ctx.lineWidth = 1;
+      ctx.setLineDash([4, 8]);
       ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
-      ctx.fillStyle = '#404659';
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#3d4255';
       ctx.font = '11px "DM Mono", monospace';
       ctx.textAlign = 'right';
-      ctx.fillText(pVal.toFixed(2), pad.left - 6, y + 4);
+      ctx.fillText(pVal.toFixed(2), pad.left - 8, y + 4);
     }
 
-    // Gradient fill
+    // Gradient fill under line
     const grad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
-    grad.addColorStop(0, `rgba(${lineColor},0.25)`);
-    grad.addColorStop(1, `rgba(${lineColor},0.0)`);
+    grad.addColorStop(0, `rgba(${lineRgb},0.22)`);
+    grad.addColorStop(0.7, `rgba(${lineRgb},0.04)`);
+    grad.addColorStop(1, `rgba(${lineRgb},0.0)`);
 
     const lastPt = chartPoints[chartPoints.length - 1];
 
     ctx.fillStyle = grad;
     ctx.beginPath();
     chartPoints.forEach((p, i) => {
-      const x = toX(p.time); const y = toY(p.price);
+      const x = toX(p.time), y = toY(p.price);
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     });
     ctx.lineTo(toX(lastPt.time), H - pad.bottom);
@@ -160,31 +156,33 @@ export default function Dashboard() {
     ctx.closePath(); ctx.fill();
 
     // Line
-    ctx.strokeStyle = `rgba(${lineColor},1)`;
+    ctx.strokeStyle = `rgba(${lineRgb},1)`;
     ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
+    ctx.shadowColor = `rgba(${lineRgb},0.5)`;
+    ctx.shadowBlur = 8;
     ctx.beginPath();
     chartPoints.forEach((p, i) => {
-      const x = toX(p.time); const y = toY(p.price);
+      const x = toX(p.time), y = toY(p.price);
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     });
     ctx.stroke();
+    ctx.shadowBlur = 0;
 
-    lastPointRef.current = { x: toX(lastPt.time), y: toY(lastPt.price), color: lineColor };
+    lastPointRef.current = { x: toX(lastPt.time), y: toY(lastPt.price), color: lineRgb };
 
     // Time labels
-    ctx.fillStyle = '#404659';
+    ctx.fillStyle = '#3d4255';
     ctx.font = '11px "DM Mono", monospace';
     ctx.textAlign = 'center';
-    const labelCount = 5;
-    for (let i = 0; i <= labelCount; i++) {
-      const t = tMin + (i / labelCount) * tRange;
+    for (let i = 0; i <= 5; i++) {
+      const t = tMin + (i / 5) * tRange;
       const x = toX(t);
       const label = new Date(t).toLocaleString('en-US', {
         hour: '2-digit', minute: '2-digit', hour12: false,
         timeZone: 'America/New_York', month: 'short', day: 'numeric',
       });
-      ctx.fillText(label, x, H - 8);
+      ctx.fillText(label, x, H - 10);
     }
   }, [chartPoints, isUp]);
 
@@ -201,14 +199,14 @@ export default function Dashboard() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, dotCanvas.width, dotCanvas.height);
       if (pt) {
-        const pulse = (Math.sin(Date.now() / 500) + 1) / 2;
+        const pulse = (Math.sin(Date.now() / 480) + 1) / 2;
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 8 + pulse * 12, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${pt.color}, ${0.6 - pulse * 0.6})`;
+        ctx.arc(pt.x, pt.y, 10 + pulse * 14, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${pt.color}, ${0.5 - pulse * 0.5})`;
         ctx.fill();
-        ctx.beginPath(); ctx.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${pt.color}, 1)`; ctx.fill();
-        ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
         ctx.fillStyle = '#fff'; ctx.fill();
       }
       animFrame = requestAnimationFrame(animate);
@@ -226,262 +224,249 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message }),
       });
-      if (res.ok) {
-        setSendStatus('✓ Sent');
-        setMessage('');
-        fetchLog();
-      } else {
-        setSendStatus('Error sending');
-      }
+      if (res.ok) { setSendStatus('✓ Sent'); setMessage(''); fetchLog(); }
+      else setSendStatus('Error sending');
     } catch { setSendStatus('Error sending'); }
     setTimeout(() => setSendStatus(''), 3000);
   }
 
-  const themeAccent = isUp ? 'var(--green)' : 'var(--red)';
-  const themeGlowRgb = isUp ? '34,212,123' : '240,81,94';
-  const spikeActive = spikeData?.alerted;
+  const accentColor = isUp ? 'var(--green)' : 'var(--red)';
+  const accentRgb = isUp ? '0,232,122' : '255,51,86';
 
   return (
     <Layout>
-      <style>{`
-        @keyframes blink-spike { 0%,100%{opacity:1} 50%{opacity:0.2} }
-        @keyframes spike-glow {
-          0%,100% { box-shadow: 0 0 0 0 rgba(240,81,94,0); }
-          50%      { box-shadow: 0 0 32px 4px rgba(240,81,94,0.18); }
-        }
-        .panel-card {
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 14px;
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .tg-send-btn {
-          padding: 10px 22px;
-          background: var(--indigo);
-          border: none; border-radius: 8px;
-          color: #fff; cursor: pointer;
-          font-family: var(--font-display); font-size: 13px; font-weight: 700;
-          transition: filter 0.2s, box-shadow 0.2s, transform 0.12s;
-          white-space: nowrap;
-        }
-        .tg-send-btn:hover { filter: brightness(1.15); box-shadow: 0 0 18px rgba(108,126,248,0.35); }
-        .tg-send-btn:active { transform: scale(0.96); }
-        .tg-input {
-          flex: 1; padding: 10px 14px;
-          background: var(--surface-2); border: 1px solid var(--border);
-          border-radius: 8px; color: var(--text-1);
-          font-family: var(--font-body); font-size: 14px; outline: none;
-          transition: border-color 0.15s;
-        }
-        .tg-input:focus { border-color: var(--border-2); }
-        .tg-input::placeholder { color: var(--text-3); }
-      `}</style>
+      <div style={{ minHeight: '100vh' }}>
 
-      <div style={{ padding: '0', minHeight: '100vh' }}>
-
-        {/* Hero section */}
-        <div style={{
-          background: `radial-gradient(ellipse at 70% 40%, rgba(${themeGlowRgb},0.06) 0%, transparent 70%), var(--bg)`,
-          padding: '32px 28px 28px',
-          borderBottom: `1px solid rgba(${themeGlowRgb},0.1)`,
+        {/* ── HERO ─────────────────────────────────────────── */}
+        <section style={{
           position: 'relative',
           overflow: 'hidden',
-          animation: spikeActive ? 'spike-glow 2s ease-in-out infinite' : 'none',
+          padding: '52px 48px 48px',
+          borderBottom: `1px solid rgba(${accentRgb},0.1)`,
+          animation: spikeActive ? 'spike-pulse 2.2s ease-in-out infinite' : 'none',
         }}>
-          {/* Bull / Bear watermark */}
+          {/* Background gradient blob */}
           <div style={{
-            position: 'absolute', right: '20px', top: '50%',
-            transform: 'translateY(-50%)',
-            fontSize: '120px', opacity: 0.06,
-            userSelect: 'none', pointerEvents: 'none',
+            position: 'absolute', top: '-80px', left: '-60px',
+            width: '600px', height: '600px', borderRadius: '50%',
+            background: `radial-gradient(circle, rgba(${accentRgb},0.07) 0%, transparent 65%)`,
+            pointerEvents: 'none',
+          }} />
+          {/* Bull/bear watermark */}
+          <div style={{
+            position: 'absolute', right: '48px', top: '50%', transform: 'translateY(-50%)',
+            fontSize: '140px', opacity: 0.04, userSelect: 'none', pointerEvents: 'none',
           }}>
             {isUp ? '🐂' : '🐻'}
           </div>
 
-          {/* Top row */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '36px', flexWrap: 'wrap', marginBottom: '20px' }}>
-            <div>
-              <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '6px', letterSpacing: '0.1em', fontFamily: 'var(--font-body)' }}>
-                {tickerDisplay} — LIVE PRICE
-              </div>
-              <Odometer value={price != null ? price.toFixed(2) : null} fontSize={56} color="var(--text-1)" />
-            </div>
+          <div style={{ maxWidth: '1400px', margin: '0 auto', position: 'relative' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '60px', flexWrap: 'wrap' }}>
 
-            <div style={{ paddingTop: '12px' }}>
-              <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px', letterSpacing: '0.1em', fontFamily: 'var(--font-body)' }}>
-                {isUp ? 'HIKE' : 'DROP'} · LAST 2 DAYS
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '13px', color: themeAccent }}>{isUp ? '▲' : '▼'}</span>
-                <Odometer
-                  value={change2d !== null ? Math.abs(change2d).toFixed(2) : null}
-                  fontSize={40}
-                  color={isUp ? '#22d47b' : '#f0515e'}
-                />
-                <span style={{
-                  fontSize: '32px', fontWeight: 700,
-                  color: themeAccent,
-                  fontFamily: 'var(--font-display)',
-                }}>%</span>
-              </div>
-              {open2d != null && (
-                <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px', fontFamily: 'var(--font-body)' }}>
-                  2-day open: {open2d.toFixed(2)}
+              {/* Price block */}
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.14em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
+                  {tickerDisplay} — LIVE PRICE
                 </div>
-              )}
-            </div>
-
-            {/* Spike indicator */}
-            <div style={{ paddingTop: '12px' }}>
-              <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px', letterSpacing: '0.1em', fontFamily: 'var(--font-body)' }}>
-                SPIKE ALERT
+                <div className="glow-white">
+                  <Odometer value={price != null ? price.toFixed(2) : null} fontSize={88} color="var(--text-1)" />
+                </div>
               </div>
-              {spikeActive ? (
+
+              {/* Change block */}
+              <div style={{ paddingBottom: '6px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.12em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
+                  {isUp ? 'HIKE' : 'DROP'} · LAST 2 DAYS
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--red)', display: 'inline-block', animation: 'blink-spike 1s ease-in-out infinite' }} />
-                  <span style={{
-                    fontSize: '13px', color: 'var(--red)', fontWeight: 700,
-                    animation: 'blink-spike 1s ease-in-out infinite',
-                    fontFamily: 'var(--font-display)',
-                  }}>
-                    SPIKE TODAY +{spikeData.pctMove}%
+                  <span style={{ fontSize: '16px', color: accentColor, fontFamily: 'var(--font-display)' }}>
+                    {isUp ? '▲' : '▼'}
                   </span>
+                  <div className={isUp ? 'glow-green' : 'glow-red'}>
+                    <Odometer
+                      value={change2d !== null ? Math.abs(change2d).toFixed(2) : null}
+                      fontSize={56}
+                      color={isUp ? '#00e87a' : '#ff3356'}
+                    />
+                  </div>
+                  <span style={{
+                    fontSize: '42px', fontWeight: 700, color: accentColor,
+                    fontFamily: 'var(--font-display)', lineHeight: 1,
+                  }}>%</span>
                 </div>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--surface-3)', display: 'inline-block' }} />
-                  <span style={{ fontSize: '13px', color: 'var(--text-3)', fontFamily: 'var(--font-body)' }}>No spike today</span>
-                </div>
-              )}
-            </div>
+                {open2d != null && (
+                  <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '6px', fontFamily: 'var(--font-mono)' }}>
+                    2-day open: {open2d.toFixed(2)}
+                  </div>
+                )}
+              </div>
 
-            <div style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--text-3)', textAlign: 'right', paddingTop: '8px', fontFamily: 'var(--font-mono)' }}>
-              {lastUpdated ? `Updated ${lastUpdated}` : 'Loading…'}
-              <br />Refreshes every 30s
+              {/* Status + meta — pushed right */}
+              <div style={{ marginLeft: 'auto', paddingBottom: '6px', textAlign: 'right' }}>
+                {/* Spike indicator */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.12em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
+                    SPIKE ALERT
+                  </div>
+                  {spikeActive ? (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px',
+                      background: 'rgba(255,51,86,0.08)', border: '1px solid rgba(255,51,86,0.25)',
+                      borderRadius: '8px', padding: '6px 14px',
+                    }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--red)', display: 'inline-block', animation: 'blink-spike 1s ease-in-out infinite' }} />
+                      <span style={{ fontSize: '13px', color: 'var(--red)', fontWeight: 700, fontFamily: 'var(--font-display)', animation: 'blink-spike 1s ease-in-out infinite' }}>
+                        SPIKE +{spikeData.pctMove}%
+                      </span>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px',
+                      background: 'rgba(0,232,122,0.05)', border: '1px solid rgba(0,232,122,0.12)',
+                      borderRadius: '8px', padding: '6px 14px',
+                    }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
+                      <span style={{ fontSize: '12px', color: 'var(--green)', fontFamily: 'var(--font-body)' }}>All clear</span>
+                    </div>
+                  )}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)', lineHeight: 1.8 }}>
+                  {lastUpdated ? `Updated ${lastUpdated}` : 'Loading…'}
+                  <br />Refreshes every 30s
+                </div>
+              </div>
+
             </div>
           </div>
+        </section>
 
-          {/* Chart */}
-          <div style={{
-            background: 'var(--surface)',
-            borderRadius: '12px',
-            padding: '16px',
-            border: `1px solid rgba(${themeGlowRgb},0.12)`,
-          }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '10px', letterSpacing: '0.06em', fontFamily: 'var(--font-body)' }}>
+        {/* ── CHART ────────────────────────────────────────── */}
+        <section style={{ padding: '0', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ padding: '20px 48px 6px', maxWidth: '1400px', margin: '0 auto' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.1em', fontFamily: 'var(--font-body)' }}>
               2-DAY CHART · 15-MIN BARS · EASTERN TIME
             </div>
-            {chartPoints.length < 2 ? (
-              <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: '13px', fontFamily: 'var(--font-body)' }}>
-                {chartPoints.length === 0 ? 'Loading…' : 'Not enough data'}
-              </div>
-            ) : (
-              <div style={{ position: 'relative' }}>
-                <canvas ref={canvasRef}
-                  style={{ width: '100%', height: '260px', display: 'block', borderRadius: '8px' }} />
-                <canvas ref={dotCanvasRef}
-                  style={{ width: '100%', height: '260px', display: 'block', borderRadius: '8px', position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
-              </div>
-            )}
           </div>
-        </div>
-
-        {/* Telegram + Log section */}
-        <div style={{ padding: '24px 28px', maxWidth: '900px' }}>
-
-          {/* Telegram send */}
-          <div className="panel-card" style={{ padding: '20px', marginBottom: '14px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '12px', letterSpacing: '0.08em', fontFamily: 'var(--font-body)' }}>
-              SEND TELEGRAM MESSAGE
+          {chartPoints.length < 2 ? (
+            <div style={{ height: '320px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: '13px', fontFamily: 'var(--font-body)' }}>
+              {chartPoints.length === 0 ? 'Loading chart…' : 'Not enough data'}
             </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <input
-                type="text"
-                className="tg-input"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && sendTelegram()}
-                placeholder="Type a message and press Enter or Send…"
-              />
-              <button className="tg-send-btn" onClick={sendTelegram}>Send</button>
+          ) : (
+            <div style={{ position: 'relative', padding: '0 0 0 0' }}>
+              <canvas ref={canvasRef} style={{ width: '100%', height: '320px', display: 'block' }} />
+              <canvas ref={dotCanvasRef} style={{ width: '100%', height: '320px', display: 'block', position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
             </div>
-            {sendStatus && (
-              <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--text-2)', fontFamily: 'var(--font-body)' }}>{sendStatus}</div>
-            )}
-          </div>
+          )}
+        </section>
 
-          {/* Message log */}
-          <div className="panel-card" style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.08em', fontFamily: 'var(--font-body)' }}>
-                TELEGRAM MESSAGE LOG
+        {/* ── BOTTOM TWO-COLUMN ────────────────────────────── */}
+        <section style={{ padding: '32px 48px 48px', maxWidth: '1400px', margin: '0 auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '20px', alignItems: 'start' }}>
+
+            {/* Telegram send */}
+            <div className="glass-card" style={{ padding: '24px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.1em', marginBottom: '16px', fontFamily: 'var(--font-body)' }}>
+                SEND TELEGRAM MESSAGE
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
-                {logEntries.length} message{logEntries.length !== 1 ? 's' : ''}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <input
+                  type="text"
+                  className="text-input"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && sendTelegram()}
+                  placeholder="Type a message…"
+                  style={{ padding: '11px 14px', width: '100%' }}
+                />
+                <button
+                  className="btn-primary"
+                  onClick={sendTelegram}
+                  style={{ padding: '11px', fontSize: '13px' }}
+                >
+                  Send to Telegram
+                </button>
               </div>
+              {sendStatus && (
+                <div style={{ marginTop: '10px', fontSize: '13px', color: 'var(--text-2)', fontFamily: 'var(--font-body)' }}>
+                  {sendStatus}
+                </div>
+              )}
             </div>
 
-            {logEntries.length === 0 ? (
-              <div style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: '13px', padding: '24px 0', fontFamily: 'var(--font-body)' }}>
-                No messages yet
+            {/* Message log */}
+            <div className="glass-card" style={{ padding: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.1em', fontFamily: 'var(--font-body)' }}>
+                  TELEGRAM MESSAGE LOG
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
+                  {logEntries.length} msg{logEntries.length !== 1 ? 's' : ''}
+                </div>
               </div>
-            ) : (
-              <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
-                {(() => {
-                  const groups = [];
-                  let lastDate = null;
-                  logEntries.forEach((entry) => {
-                    const dateKey = new Date(entry.timestamp).toLocaleDateString('en-GB', {
-                      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-                      timeZone: 'Asia/Jerusalem',
+
+              {logEntries.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: '13px', padding: '28px 0', fontFamily: 'var(--font-body)' }}>
+                  No messages yet
+                </div>
+              ) : (
+                <div style={{ maxHeight: '340px', overflowY: 'auto' }}>
+                  {(() => {
+                    const groups = [];
+                    let lastDate = null;
+                    logEntries.forEach((entry) => {
+                      const dateKey = new Date(entry.timestamp).toLocaleDateString('en-GB', {
+                        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+                        timeZone: 'Asia/Jerusalem',
+                      });
+                      if (dateKey !== lastDate) { groups.push({ date: dateKey, entries: [] }); lastDate = dateKey; }
+                      groups[groups.length - 1].entries.push(entry);
                     });
-                    if (dateKey !== lastDate) { groups.push({ date: dateKey, entries: [] }); lastDate = dateKey; }
-                    groups[groups.length - 1].entries.push(entry);
-                  });
-                  return groups.map((group) => (
-                    <div key={group.date} style={{ marginBottom: '16px' }}>
-                      <div style={{
-                        fontSize: '11px', color: 'var(--text-3)', textTransform: 'uppercase',
-                        letterSpacing: '0.08em', marginBottom: '8px',
-                        borderBottom: '1px solid var(--border)', paddingBottom: '4px',
-                        fontFamily: 'var(--font-body)',
-                      }}>
-                        {group.date}
-                      </div>
-                      {group.entries.map((entry) => {
-                        const isScheduled = entry.type === 'scheduled';
-                        const time = new Date(entry.timestamp).toLocaleTimeString('en-GB', {
-                          hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem',
-                        });
-                        return (
-                          <div key={entry.id} style={{
-                            display: 'flex', gap: '10px', alignItems: 'flex-start',
-                            padding: '8px 10px', borderRadius: '8px',
-                            marginBottom: '4px', background: 'var(--bg)',
-                          }}>
-                            <span style={{ fontSize: '11px', color: 'var(--text-3)', minWidth: '40px', paddingTop: '1px', fontFamily: 'var(--font-mono)' }}>{time}</span>
-                            <span style={{
-                              fontSize: '10px', padding: '2px 7px', borderRadius: '4px',
-                              background: isScheduled ? 'rgba(108,126,248,0.1)' : 'rgba(34,212,123,0.08)',
-                              color: isScheduled ? 'var(--indigo)' : 'var(--green)',
-                              whiteSpace: 'nowrap', minWidth: '90px', textAlign: 'center',
-                              fontFamily: 'var(--font-mono)',
+                    return groups.map((group) => (
+                      <div key={group.date} style={{ marginBottom: '14px' }}>
+                        <div style={{
+                          fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase',
+                          letterSpacing: '0.1em', marginBottom: '8px',
+                          borderBottom: '1px solid var(--border)', paddingBottom: '5px',
+                          fontFamily: 'var(--font-body)',
+                        }}>
+                          {group.date}
+                        </div>
+                        {group.entries.map((entry) => {
+                          const isScheduled = entry.type === 'scheduled';
+                          const time = new Date(entry.timestamp).toLocaleTimeString('en-GB', {
+                            hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem',
+                          });
+                          return (
+                            <div key={entry.id} style={{
+                              display: 'flex', gap: '10px', alignItems: 'flex-start',
+                              padding: '7px 10px', borderRadius: '8px', marginBottom: '3px',
+                              background: 'rgba(255,255,255,0.02)',
                             }}>
-                              {entry.source}
-                            </span>
-                            <span style={{ fontSize: '12px', color: 'var(--text-2)', lineHeight: '1.5', whiteSpace: 'pre-line', fontFamily: 'var(--font-body)' }}>
-                              {entry.message}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ));
-                })()}
-              </div>
-            )}
+                              <span style={{ fontSize: '11px', color: 'var(--text-3)', minWidth: '38px', paddingTop: '1px', fontFamily: 'var(--font-mono)', flexShrink: 0 }}>
+                                {time}
+                              </span>
+                              <span style={{
+                                fontSize: '10px', padding: '2px 7px', borderRadius: '5px',
+                                background: isScheduled ? 'rgba(124,140,248,0.1)' : 'rgba(0,232,122,0.08)',
+                                color: isScheduled ? 'var(--indigo)' : 'var(--green)',
+                                whiteSpace: 'nowrap', minWidth: '88px', textAlign: 'center',
+                                fontFamily: 'var(--font-mono)', flexShrink: 0,
+                              }}>
+                                {entry.source}
+                              </span>
+                              <span style={{ fontSize: '12px', color: 'var(--text-2)', lineHeight: '1.55', whiteSpace: 'pre-line', fontFamily: 'var(--font-body)' }}>
+                                {entry.message}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ));
+                  })()}
+                </div>
+              )}
+            </div>
+
           </div>
-        </div>
+        </section>
       </div>
     </Layout>
   );

@@ -22,17 +22,17 @@ export default function History() {
   const closed = trades.filter((t) => t.status === 'CLOSED');
   const reverted = closed.filter((t) => t.exitReason === 'Reverted').length;
   const expired = closed.filter((t) => t.exitReason === 'Expired').length;
-  const winRate = closed.length > 0 ? ((reverted / closed.length) * 100).toFixed(0) : null;
+  const winRate = closed.length > 0 ? Number(((reverted / closed.length) * 100).toFixed(0)) : null;
 
   const statsConfig = [
-    { label: 'TOTAL TRADES', value: closed.length, color: 'var(--text-1)', glow: 'rgba(237,240,247,0.08)' },
-    { label: 'REVERTED', value: reverted, color: 'var(--green)', glow: 'rgba(34,212,123,0.15)' },
-    { label: 'EXPIRED', value: expired, color: 'var(--red)', glow: 'rgba(240,81,94,0.15)' },
+    { label: 'TOTAL TRADES', value: closed.length, color: 'var(--text-1)', glowRgb: '237,240,247' },
+    { label: 'REVERTED', value: reverted, color: 'var(--green)', glowRgb: '0,232,122' },
+    { label: 'EXPIRED', value: expired, color: 'var(--red)', glowRgb: '255,51,86' },
     {
       label: 'WIN RATE',
       value: winRate != null ? `${winRate}%` : '—',
-      color: winRate != null && Number(winRate) >= 50 ? 'var(--green)' : 'var(--red)',
-      glow: winRate != null && Number(winRate) >= 50 ? 'rgba(34,212,123,0.15)' : 'rgba(240,81,94,0.15)',
+      color: winRate != null && winRate >= 50 ? 'var(--green)' : 'var(--red)',
+      glowRgb: winRate != null && winRate >= 50 ? '0,232,122' : '255,51,86',
     },
   ];
 
@@ -40,61 +40,79 @@ export default function History() {
     <Layout>
       <style>{`
         .stat-card {
-          background: var(--surface);
+          background: rgba(11,13,26,0.7);
+          backdrop-filter: blur(16px);
           border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 16px 20px;
-          min-width: 120px;
-          transition: transform 0.2s, box-shadow 0.2s;
+          border-radius: 14px;
+          padding: 20px 24px;
+          transition: transform 0.22s cubic-bezier(.2,.8,.4,1), box-shadow 0.22s;
+          cursor: default;
         }
-        .table-row:nth-child(even) { background: rgba(255,255,255,0.015); }
-        .table-row:hover { background: rgba(255,255,255,0.03); }
+        .history-row { transition: background 0.15s; }
+        .history-row:hover { background: rgba(255,255,255,0.025) !important; }
       `}</style>
 
-      <div style={{ padding: '32px 28px', minHeight: '100vh' }}>
-        <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.1em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
-          DID YOU MISS?
+      <div style={{ minHeight: '100vh', padding: '48px', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.14em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
+          HISTORY
         </div>
-        <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-1)', marginBottom: '28px', fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
+        <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-1)', marginBottom: '36px', fontFamily: 'var(--font-display)', letterSpacing: '-0.03em' }}>
           Historical Trades
         </div>
 
         {loading ? (
-          <div style={{ color: 'var(--text-3)', fontSize: '13px', fontFamily: 'var(--font-body)' }}>Loading…</div>
+          <div style={{ color: 'var(--text-3)', fontSize: '14px', fontFamily: 'var(--font-body)' }}>Loading…</div>
         ) : closed.length === 0 ? (
-          <div style={{ color: 'var(--text-3)', fontSize: '14px', marginTop: '60px', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
-            No closed trades yet. Check back after the first spike event.
+          <div style={{ color: 'var(--text-3)', fontSize: '14px', marginTop: '80px', textAlign: 'center', fontFamily: 'var(--font-body)', lineHeight: 1.8 }}>
+            No closed trades yet.
+            <br />Check back after the first spike event.
           </div>
         ) : (
           <>
             {/* Stats row */}
-            <div style={{ display: 'flex', gap: '14px', marginBottom: '28px', flexWrap: 'wrap' }}>
-              {statsConfig.map(({ label, value, color, glow }) => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px', marginBottom: '36px' }}>
+              {statsConfig.map(({ label, value, color, glowRgb }) => (
                 <div
                   key={label}
                   className="stat-card"
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = `0 4px 20px ${glow}`;
+                    e.currentTarget.style.transform = 'translateY(-3px)';
+                    e.currentTarget.style.boxShadow = `0 8px 28px rgba(${glowRgb},0.14)`;
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = '';
                     e.currentTarget.style.boxShadow = '';
                   }}
                 >
-                  <div style={{ fontSize: '10px', color: 'var(--text-3)', letterSpacing: '0.08em', marginBottom: '4px', fontFamily: 'var(--font-body)' }}>{label}</div>
-                  <div style={{ fontSize: '26px', fontWeight: 700, color, fontFamily: 'var(--font-mono)' }}>{value}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-3)', letterSpacing: '0.1em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
+                    {label}
+                  </div>
+                  <div style={{
+                    fontSize: '32px', fontWeight: 700, color,
+                    fontFamily: 'var(--font-mono)', lineHeight: 1,
+                    textShadow: `0 0 20px rgba(${glowRgb},0.35)`,
+                  }}>
+                    {value}
+                  </div>
                 </div>
               ))}
             </div>
 
-            {/* Trade table */}
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden', maxWidth: '920px' }}>
+            {/* Table */}
+            <div style={{
+              background: 'rgba(11,13,26,0.7)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid var(--border)',
+              borderRadius: '16px',
+              overflow: 'hidden',
+            }}>
               {/* Header */}
               <div style={{
-                display: 'grid', gridTemplateColumns: '110px 80px 90px 130px 110px 100px 70px 100px',
-                padding: '12px 20px', borderBottom: '1px solid var(--border)',
-                fontSize: '10px', color: 'var(--text-3)', letterSpacing: '0.06em',
+                display: 'grid',
+                gridTemplateColumns: '120px 90px 100px 140px 120px 110px 70px 110px',
+                padding: '14px 24px',
+                borderBottom: '1px solid var(--border)',
+                fontSize: '10px', color: 'var(--text-3)', letterSpacing: '0.08em',
                 fontFamily: 'var(--font-mono)',
               }}>
                 <span>DATE</span>
@@ -108,22 +126,35 @@ export default function History() {
               </div>
 
               {/* Rows */}
-              {[...closed].reverse().map((trade) => {
+              {[...closed].reverse().map((trade, idx) => {
                 const isReverted = trade.exitReason === 'Reverted';
                 return (
-                  <div key={trade.id} className="table-row" style={{
-                    display: 'grid', gridTemplateColumns: '110px 80px 90px 130px 110px 100px 70px 100px',
-                    padding: '13px 20px', borderBottom: '1px solid var(--border)',
-                    fontSize: '13px', alignItems: 'center',
-                  }}>
+                  <div
+                    key={trade.id}
+                    className="history-row"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '120px 90px 100px 140px 120px 110px 70px 110px',
+                      padding: '14px 24px',
+                      borderBottom: '1px solid var(--border)',
+                      fontSize: '13px', alignItems: 'center',
+                      background: idx % 2 === 1 ? 'rgba(255,255,255,0.012)' : 'transparent',
+                    }}
+                  >
                     <span style={{ color: 'var(--text-2)', fontFamily: 'var(--font-body)' }}>{trade.triggerDate}</span>
-                    <span style={{ color: 'var(--red)', fontWeight: 700, fontFamily: 'var(--font-display)', fontSize: '13px' }}>+{trade.pctMove}%</span>
+                    <span style={{
+                      color: 'var(--red)', fontWeight: 700,
+                      fontFamily: 'var(--font-display)', fontSize: '14px',
+                      textShadow: '0 0 16px rgba(255,51,86,0.4)',
+                    }}>
+                      +{trade.pctMove}%
+                    </span>
                     <span style={{ color: 'var(--text-1)', fontFamily: 'var(--font-mono)' }}>{trade.entryVIX}</span>
                     <span style={{ color: 'var(--green)', fontFamily: 'var(--font-mono)' }}>{trade.reversionTarget}</span>
                     <span style={{ color: 'var(--text-2)', fontFamily: 'var(--font-body)' }}>{trade.exitDate}</span>
                     <span style={{
-                      fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
-                      background: isReverted ? 'rgba(34,212,123,0.08)' : 'rgba(240,81,94,0.08)',
+                      fontSize: '11px', padding: '3px 10px', borderRadius: '6px', display: 'inline-block',
+                      background: isReverted ? 'rgba(0,232,122,0.08)' : 'rgba(255,51,86,0.08)',
                       color: isReverted ? 'var(--green)' : 'var(--red)',
                       fontFamily: 'var(--font-body)',
                     }}>

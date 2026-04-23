@@ -5,7 +5,7 @@ import { signOut } from 'next-auth/react';
 const NAV = [
   { href: '/', label: 'Dashboard' },
   { href: '/live-trades', label: 'Live Trades', pulse: true },
-  { href: '/simulate', label: 'Simulate Hike' },
+  { href: '/simulate', label: 'Simulate' },
   { href: '/history', label: 'History' },
 ];
 
@@ -13,104 +13,80 @@ export default function Layout({ children }) {
   const { pathname } = useRouter();
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', color: 'var(--text-1)', fontFamily: 'var(--font-body)' }}>
+    <div style={{ minHeight: '100vh', color: 'var(--text-1)', fontFamily: 'var(--font-body)' }}>
       <style>{`
         @keyframes pulse-dot {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50%       { opacity: 0.3; transform: scale(0.7); }
+          0%,100% { opacity:1; transform:scale(1); }
+          50%      { opacity:0.2; transform:scale(0.5); }
         }
-        .nav-link {
-          display: flex; align-items: center; gap: 10px;
-          padding: 11px 20px;
-          font-family: var(--font-body); font-size: 13px;
-          color: var(--text-3);
+        .topnav {
+          position: fixed; top: 0; left: 0; right: 0; height: var(--nav-h);
+          z-index: 200;
+          background: rgba(4,5,9,0.82);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          border-bottom: 1px solid var(--border);
+          display: flex; align-items: center;
+          padding: 0 32px; gap: 0;
+        }
+        .nav-logo {
+          font-family: var(--font-display); font-size: 19px; font-weight: 800;
+          color: var(--indigo); letter-spacing: -0.03em;
+          user-select: none; flex-shrink: 0; margin-right: 40px;
           text-decoration: none;
-          border-left: 3px solid transparent;
-          transition: color 0.15s, background 0.15s;
-          position: relative;
-          cursor: pointer;
         }
-        .nav-link:hover { color: var(--text-2); background: rgba(255,255,255,0.02); }
-        .nav-link.active {
+        .nav-links {
+          flex: 1; display: flex; align-items: center; justify-content: center; gap: 2px;
+        }
+        .nav-item {
+          position: relative; display: inline-flex; align-items: center; gap: 6px;
+          padding: 7px 15px;
+          font-family: var(--font-body); font-size: 13px; font-weight: 500;
+          color: var(--text-3); text-decoration: none;
+          border-radius: 8px; border: 1px solid transparent;
+          transition: color 0.15s, background 0.15s, border-color 0.15s;
+        }
+        .nav-item:hover { color: var(--text-2); background: rgba(255,255,255,0.03); }
+        .nav-item.active {
           color: var(--text-1);
           background: var(--surface-2);
-          border-left-color: var(--indigo);
+          border-color: var(--border);
         }
-        .pulse-dot {
-          width: 6px; height: 6px; border-radius: 50%;
-          background: var(--red);
-          flex-shrink: 0;
+        .live-dot {
+          width: 5px; height: 5px; border-radius: 50%;
+          background: var(--red); flex-shrink: 0;
           animation: pulse-dot 1.4s ease-in-out infinite;
         }
-        .signout-btn {
-          margin: 0 14px 4px;
-          padding: 9px 14px;
-          background: var(--surface-2);
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          color: var(--text-3);
-          cursor: pointer;
+        .nav-signout {
+          padding: 7px 14px; flex-shrink: 0; margin-left: 24px;
           font-size: 12px;
-          font-family: var(--font-body);
-          text-align: left;
-          transition: color 0.15s, border-color 0.15s;
-          width: calc(100% - 28px);
         }
-        .signout-btn:hover { color: var(--text-2); border-color: var(--border-2); }
       `}</style>
 
-      {/* Sidebar */}
-      <div style={{
-        width: '224px',
-        minWidth: '224px',
-        background: 'var(--surface)',
-        borderRight: '1px solid var(--border)',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '28px 0 20px',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        height: '100vh',
-        zIndex: 100,
-      }}>
-        {/* Logo */}
-        <div style={{ padding: '0 20px 28px' }}>
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '20px',
-            fontWeight: 800,
-            color: 'var(--indigo)',
-            letterSpacing: '-0.02em',
-          }}>
-            VIXit
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '3px', fontFamily: 'var(--font-body)' }}>
-            Volatility intelligence
-          </div>
-        </div>
+      <nav className="topnav">
+        <span className="nav-logo">VIXit</span>
 
-        {/* Nav */}
-        <nav style={{ flex: 1 }}>
+        <div className="nav-links">
           {NAV.map(({ href, label, pulse }) => {
             const active = pathname === href;
             return (
-              <Link key={href} href={href} className={`nav-link${active ? ' active' : ''}`}>
-                {pulse && !active && <span className="pulse-dot" />}
+              <Link key={href} href={href} className={`nav-item${active ? ' active' : ''}`}>
+                {pulse && !active && <span className="live-dot" />}
                 {label}
               </Link>
             );
           })}
-        </nav>
+        </div>
 
-        {/* Sign out */}
-        <button className="signout-btn" onClick={() => signOut({ callbackUrl: '/login' })}>
+        <button
+          className="btn-ghost nav-signout"
+          onClick={() => signOut({ callbackUrl: '/login' })}
+        >
           Sign out
         </button>
-      </div>
+      </nav>
 
-      {/* Page content */}
-      <div style={{ marginLeft: '224px', flex: 1, minHeight: '100vh' }}>
+      <div style={{ paddingTop: 'var(--nav-h)' }}>
         {children}
       </div>
     </div>
