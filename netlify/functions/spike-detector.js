@@ -1,6 +1,6 @@
 const { schedule } = require('@netlify/functions');
 const { addLogEntry } = require('./_log');
-const { getNearestExpiration, getVIXPutChain, findITMStrikes, midPrice } = require('./_tradier');
+const { getNearestExpiration, getVIXPutChain, findOTMStrikes, midPrice } = require('./_tradier');
 
 exports.handler = schedule('*/15 13-20 * * 1-5', async () => {
   try {
@@ -46,8 +46,8 @@ exports.handler = schedule('*/15 13-20 * * 1-5', async () => {
       optionExpiration = await getNearestExpiration();
       if (optionExpiration) {
         const chain = await getVIXPutChain(optionExpiration);
-        const strikes = findITMStrikes(chain, currentPrice);
-        const labels = ['ATM', 'ITM+1', 'ITM+2'];
+        const strikes = findOTMStrikes(chain, currentPrice);
+        const labels = ['ATM', 'OTM+1', 'OTM+2'];
         optionData = strikes.map((opt, i) => ({
           label: labels[i],
           strike: opt.strike,

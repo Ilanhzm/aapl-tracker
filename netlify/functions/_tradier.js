@@ -60,8 +60,8 @@ async function getOptionQuotes(symbols) {
 }
 
 // Given a sorted PUT chain and current VIX price, returns [ATM, ITM+1, ITM+2] option objects
-// For PUTs, ITM = strike ABOVE the current price
-function findITMStrikes(chain, vixPrice) {
+// For PUTs, OTM = strike BELOW the current price
+function findOTMStrikes(chain, vixPrice) {
   const sorted = [...chain].sort((a, b) => a.strike - b.strike);
   if (sorted.length === 0) return [];
   const atmIdx = sorted.reduce(
@@ -69,7 +69,7 @@ function findITMStrikes(chain, vixPrice) {
       Math.abs(opt.strike - vixPrice) < Math.abs(sorted[best].strike - vixPrice) ? i : best,
     0
   );
-  return [sorted[atmIdx], sorted[atmIdx + 1], sorted[atmIdx + 2]].filter(Boolean);
+  return [sorted[atmIdx], sorted[atmIdx - 1], sorted[atmIdx - 2]].filter(Boolean);
 }
 
 // Returns the mid price of an option, falling back to last traded price
@@ -78,4 +78,4 @@ function midPrice(opt) {
   return opt.last > 0 ? +opt.last.toFixed(2) : null;
 }
 
-module.exports = { getNearestExpiration, getVIXPutChain, getOptionQuotes, findITMStrikes, midPrice };
+module.exports = { getNearestExpiration, getVIXPutChain, getOptionQuotes, findOTMStrikes, midPrice };
