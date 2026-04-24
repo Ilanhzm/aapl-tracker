@@ -7,32 +7,13 @@ function FloatingYogi() {
     <>
       <style>{`
         @keyframes yogi-float {
-          0%, 100% { transform: translateY(0px); filter: drop-shadow(0 0 12px rgba(0,232,122,0.4)); }
-          50%       { transform: translateY(-24px); filter: drop-shadow(0 0 26px rgba(0,232,122,0.65)); }
-        }
-        @keyframes yogi-aura {
-          0%, 100% { opacity: 0.1; }
-          50%       { opacity: 0.25; }
+          0%, 100% { transform: translateY(0px); filter: drop-shadow(0 0 18px rgba(0,232,122,0.45)); }
+          50%       { transform: translateY(-20px); filter: drop-shadow(0 0 36px rgba(0,232,122,0.75)); }
         }
         .yogi-body { animation: yogi-float 4s ease-in-out infinite; }
-        .yogi-aura { animation: yogi-aura 4s ease-in-out infinite; }
       `}</style>
       <div className="yogi-body">
-        <svg width="160" height="180" viewBox="0 0 150 170" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle className="yogi-aura" cx="75" cy="34" r="48" stroke="#00e87a" strokeWidth="0.5" />
-          <circle className="yogi-aura" cx="75" cy="34" r="36" stroke="#00e87a" strokeWidth="0.8" />
-          <circle cx="75" cy="34" r="17" stroke="#00e87a" strokeWidth="2.5" />
-          <line x1="75" y1="51" x2="75" y2="62" stroke="#00e87a" strokeWidth="2.5" strokeLinecap="round" />
-          <line x1="75" y1="62" x2="75" y2="104" stroke="#00e87a" strokeWidth="3" strokeLinecap="round" />
-          <line x1="75" y1="72" x2="34" y2="90" stroke="#00e87a" strokeWidth="2.5" strokeLinecap="round" />
-          <circle cx="34" cy="90" r="4" fill="#00e87a" />
-          <line x1="75" y1="72" x2="116" y2="90" stroke="#00e87a" strokeWidth="2.5" strokeLinecap="round" />
-          <circle cx="116" cy="90" r="4" fill="#00e87a" />
-          <path d="M 75 104 C 58 114 38 120 22 142" stroke="#00e87a" strokeWidth="2.5" strokeLinecap="round" />
-          <path d="M 22 142 C 40 134 60 130 82 136" stroke="#00e87a" strokeWidth="2" strokeLinecap="round" />
-          <path d="M 75 104 C 92 114 112 120 128 142" stroke="#00e87a" strokeWidth="2.5" strokeLinecap="round" />
-          <path d="M 128 142 C 110 134 90 130 68 136" stroke="#00e87a" strokeWidth="2" strokeLinecap="round" />
-        </svg>
+        <img src="/bull-yogi.png" alt="Bull meditating" width={220} height={248} style={{ display: 'block' }} />
       </div>
     </>
   );
