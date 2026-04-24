@@ -114,13 +114,35 @@ export default function Dashboard() {
     const maxP = Math.max(...prices);
     const pRange = maxP - minP || 1;
     const tMin = chartPoints[0].time;
-    const tMax = chartPoints[chartPoints.length - 1].time;
+
+    // Fix right edge to today's 4:00 PM ET so current price sits at the correct
+    // proportional position mid-chart rather than always pinned to the right edge
+    const tMax = (() => {
+      const et = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      et.setHours(16, 0, 0, 0);
+      // If market already past close, anchor to last data point so chart doesn't shrink
+      return Math.max(et.getTime(), chartPoints[chartPoints.length - 1].time);
+    })();
     const tRange = tMax - tMin || 1;
 
     const toX = (t) => pad.left + ((t - tMin) / tRange) * (W - pad.left - pad.right);
     const toY = (p) => H - pad.bottom - ((p - minP) / pRange) * (H - pad.top - pad.bottom);
 
     const lineRgb = isUp ? '0,232,122' : '255,51,86';
+
+    // Split data into continuous segments — break when gap > 45 min (overnight)
+    const GAP = 45 * 60 * 1000;
+    const segments = [];
+    let seg = [chartPoints[0]];
+    for (let i = 1; i < chartPoints.length; i++) {
+      if (chartPoints[i].time - chartPoints[i - 1].time > GAP) {
+        segments.push(seg);
+        seg = [chartPoints[i]];
+      } else {
+        seg.push(chartPoints[i]);
+      }
+    }
+    segments.push(seg);
 
     // Horizontal grid lines
     for (let i = 0; i <= 4; i++) {
@@ -137,25 +159,27 @@ export default function Dashboard() {
       ctx.fillText(pVal.toFixed(2), pad.left - 8, y + 4);
     }
 
-    // Gradient fill under line
+    // Gradient fill — drawn per segment so overnight gap is not filled
     const grad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
     grad.addColorStop(0, `rgba(${lineRgb},0.22)`);
     grad.addColorStop(0.7, `rgba(${lineRgb},0.04)`);
     grad.addColorStop(1, `rgba(${lineRgb},0.0)`);
-
-    const lastPt = chartPoints[chartPoints.length - 1];
-
     ctx.fillStyle = grad;
-    ctx.beginPath();
-    chartPoints.forEach((p, i) => {
-      const x = toX(p.time), y = toY(p.price);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    segments.forEach((s) => {
+      const lastSPt = s[s.length - 1];
+      ctx.beginPath();
+      s.forEach((p, i) => {
+        const x = toX(p.time), y = toY(p.price);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.lineTo(toX(lastSPt.time), H - pad.bottom);
+      ctx.lineTo(toX(s[0].time), H - pad.bottom);
+      ctx.closePath();
+      ctx.fill();
     });
-    ctx.lineTo(toX(lastPt.time), H - pad.bottom);
-    ctx.lineTo(toX(tMin), H - pad.bottom);
-    ctx.closePath(); ctx.fill();
 
-    // Line
+    // Line — lift pen at overnight gaps
+    const lastPt = chartPoints[chartPoints.length - 1];
     ctx.strokeStyle = `rgba(${lineRgb},1)`;
     ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
@@ -164,14 +188,15 @@ export default function Dashboard() {
     ctx.beginPath();
     chartPoints.forEach((p, i) => {
       const x = toX(p.time), y = toY(p.price);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      const isGap = i > 0 && chartPoints[i].time - chartPoints[i - 1].time > GAP;
+      (i === 0 || isGap) ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     });
     ctx.stroke();
     ctx.shadowBlur = 0;
 
     lastPointRef.current = { x: toX(lastPt.time), y: toY(lastPt.price), color: lineRgb };
 
-    // Time labels
+    // Time labels — show market open/close anchors + intermediate points
     ctx.fillStyle = '#3d4255';
     ctx.font = '11px "DM Mono", monospace';
     ctx.textAlign = 'center';
