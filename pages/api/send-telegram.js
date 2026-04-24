@@ -9,6 +9,7 @@ export default async function handler(req, res) {
 
   const { message } = req.body;
   if (!message?.trim()) return res.status(400).json({ error: 'Empty message' });
+  if (message.length > 500) return res.status(400).json({ error: 'Message too long' });
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;

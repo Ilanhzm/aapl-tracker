@@ -10,9 +10,12 @@ export const authOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
+        const validUser = process.env.APP_USERNAME;
+        const validPass = process.env.APP_PASSWORD;
+        if (!validUser || !validPass) return null;
         if (
-          credentials.username === 'admin' &&
-          credentials.password === 'test123'
+          credentials.username === validUser &&
+          credentials.password === validPass
         ) {
           return { id: 1, name: 'Admin' };
         }
