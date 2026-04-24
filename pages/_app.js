@@ -20,7 +20,7 @@ const globalCSS = `
     --font-display: 'Syne', sans-serif;
     --font-body:    'DM Sans', sans-serif;
     --font-mono:    'DM Mono', monospace;
-    --nav-h:     76px;
+    --nav-h:     91px;
   }
 
   html, body {
