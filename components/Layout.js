@@ -35,7 +35,7 @@ export default function Layout({ children }) {
           text-decoration: none;
         }
         .nav-logo img {
-          height: 32px; width: auto; display: block;
+          height: 42px; width: auto; display: block;
         }
         .nav-links {
           flex: 1; display: flex; align-items: center; justify-content: center; gap: 2px;
@@ -43,7 +43,7 @@ export default function Layout({ children }) {
         .nav-item {
           position: relative; display: inline-flex; align-items: center; gap: 6px;
           padding: 7px 15px;
-          font-family: var(--font-body); font-size: 13px; font-weight: 500;
+          font-family: var(--font-body); font-size: 15px; font-weight: 500;
           color: var(--text-3); text-decoration: none;
           border-radius: 8px; border: 1px solid transparent;
           transition: color 0.15s, background 0.15s, border-color 0.15s;
