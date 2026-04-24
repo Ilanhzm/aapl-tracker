@@ -6,12 +6,6 @@ A password-protected web platform for VIX options trading intelligence. Tracks l
 
 **Live site:** https://steady-salmiakki-5d5f44.netlify.app
 
-## Login Credentials
-- Username: `admin`
-- Password: `test123`
-
----
-
 ## Pages
 
 | Page | Route | Description |
