@@ -12,7 +12,7 @@ const globalCSS = `
     --border-2:  rgba(255,255,255,0.13);
     --text-1:    #edf0f7;
     --text-2:    #8892a4;
-    --text-3:    #3d4255;
+    --text-3:    #6b7280;
     --green:     #00e87a;
     --red:       #ff3356;
     --indigo:    #7c8cf8;

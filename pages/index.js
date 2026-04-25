@@ -159,6 +159,33 @@ export default function Dashboard() {
       ctx.fillText(pVal.toFixed(2), pad.left - 8, y + 4);
     }
 
+    // Day labels + vertical dividers at session boundaries
+    ctx.font = '10px "DM Mono", monospace';
+    ctx.textAlign = 'left';
+    // Label the first session (yesterday)
+    const firstLabel = new Date(segments[0][0].time).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', timeZone: 'America/New_York',
+    });
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillText(firstLabel, pad.left + 6, pad.top + 14);
+    // Divider + label at start of each subsequent session
+    segments.slice(1).forEach((s) => {
+      const x = toX(s[0].time);
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath();
+      ctx.moveTo(x, pad.top);
+      ctx.lineTo(x, H - pad.bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const dateLabel = new Date(s[0].time).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', timeZone: 'America/New_York',
+      });
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.fillText(dateLabel, x + 6, pad.top + 14);
+    });
+
     // Gradient fill — drawn per segment so overnight gap is not filled
     const grad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
     grad.addColorStop(0, `rgba(${lineRgb},0.22)`);
