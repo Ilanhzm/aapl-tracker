@@ -48,6 +48,8 @@ export default function Dashboard() {
   const canvasRef = useRef(null);
   const dotCanvasRef = useRef(null);
   const lastPointRef = useRef(null);
+  const [priceFontSize, setPriceFontSize] = useState(88);
+  const [changeFontSize, setChangeFontSize] = useState(56);
 
   const isUp = change2d !== null && change2d >= 0;
   const spikeActive = spikeData?.alerted;
@@ -94,6 +96,17 @@ export default function Dashboard() {
     const id = setInterval(fetchPrice, 30000);
     const spikeId = setInterval(fetchSpikeStatus, 60000);
     return () => { clearInterval(id); clearInterval(spikeId); };
+  }, []);
+
+  useEffect(() => {
+    const update = () => {
+      const mobile = window.innerWidth <= 768;
+      setPriceFontSize(mobile ? 64 : 88);
+      setChangeFontSize(mobile ? 40 : 56);
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
   }, []);
 
   // Draw chart
@@ -297,16 +310,22 @@ export default function Dashboard() {
         .hero-inner { display: flex; align-items: flex-end; gap: 60px; flex-wrap: wrap; }
         .hero-meta { margin-left: auto; padding-bottom: 6px; text-align: right; }
         .spike-label { margin-bottom: 16px; }
+        .spike-text { display: block; }
+        .pct-sign { font-size: 42px; font-weight: 700; line-height: 1; }
+        .chart-canvas { height: 320px; }
         .chart-header { padding: 20px 48px 6px; max-width: 1400px; margin: 0 auto; }
         .bottom-section { padding: 32px 48px 48px; max-width: 1400px; margin: 0 auto; }
         .bottom-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 20px; align-items: start; }
         @media (max-width: 768px) {
-          .hero-section { padding: 28px 20px 24px; }
-          .hero-inner { flex-direction: column; gap: 20px; align-items: flex-start; }
+          .hero-section { padding: 20px 20px 16px; }
+          .hero-inner { flex-direction: column; gap: 10px; align-items: flex-start; }
           .hero-meta { margin-left: 0; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
           .spike-label { margin-bottom: 0; }
-          .chart-header { padding: 14px 16px 4px; }
-          .bottom-section { padding: 20px 16px 32px; }
+          .spike-text { display: none; }
+          .pct-sign { font-size: 28px; }
+          .chart-canvas { height: 250px; }
+          .chart-header { padding: 10px 16px 4px; }
+          .bottom-section { padding: 16px 16px 32px; }
           .bottom-grid { grid-template-columns: 1fr; }
         }
       `}</style>
@@ -343,7 +362,7 @@ export default function Dashboard() {
                   {tickerDisplay} — LIVE PRICE
                 </div>
                 <div className="glow-white">
-                  <Odometer value={price != null ? price.toFixed(2) : null} fontSize={88} color="var(--text-1)" />
+                  <Odometer value={price != null ? price.toFixed(2) : null} fontSize={priceFontSize} color="var(--text-1)" />
                 </div>
               </div>
 
@@ -359,14 +378,11 @@ export default function Dashboard() {
                   <div className={isUp ? 'glow-green' : 'glow-red'}>
                     <Odometer
                       value={change2d !== null ? Math.abs(change2d).toFixed(2) : null}
-                      fontSize={56}
+                      fontSize={changeFontSize}
                       color={isUp ? '#00e87a' : '#ff3356'}
                     />
                   </div>
-                  <span style={{
-                    fontSize: '42px', fontWeight: 700, color: accentColor,
-                    fontFamily: 'var(--font-display)', lineHeight: 1,
-                  }}>%</span>
+                  <span className="pct-sign" style={{ color: accentColor, fontFamily: 'var(--font-display)' }}>%</span>
                 </div>
                 {open2d != null && (
                   <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '6px', fontFamily: 'var(--font-mono)' }}>
@@ -379,7 +395,7 @@ export default function Dashboard() {
               <div className="hero-meta">
                 {/* Spike indicator */}
                 <div className="spike-label">
-                  <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.12em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
+                  <div className="spike-text" style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.12em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
                     SPIKE ALERT
                   </div>
                   {spikeActive ? (
@@ -425,8 +441,8 @@ export default function Dashboard() {
             </div>
           ) : (
             <div style={{ position: 'relative', padding: '0 0 0 0' }}>
-              <canvas ref={canvasRef} style={{ width: '100%', height: '320px', display: 'block' }} />
-              <canvas ref={dotCanvasRef} style={{ width: '100%', height: '320px', display: 'block', position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
+              <canvas ref={canvasRef} className="chart-canvas" style={{ width: '100%', display: 'block' }} />
+              <canvas ref={dotCanvasRef} className="chart-canvas" style={{ width: '100%', display: 'block', position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
             </div>
           )}
         </section>
