@@ -60,7 +60,12 @@ export default function Dashboard() {
       setPrice(data.price);
       setChange2d(data.change2d);
       setOpen2d(data.open2d);
-      setChartPoints(data.chartPoints || []);
+      const allPoints = data.chartPoints || [];
+      const nowET = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+      const todayPoints = allPoints.filter(p =>
+        new Date(p.time).toLocaleDateString('en-US', { timeZone: 'America/New_York' }) === nowET
+      );
+      setChartPoints(todayPoints.length >= 2 ? todayPoints : allPoints);
       if (data.tickerDisplay) setTickerDisplay(data.tickerDisplay);
       setLastUpdated(new Date().toLocaleTimeString());
     } catch {}
@@ -287,13 +292,30 @@ export default function Dashboard() {
 
   return (
     <Layout>
+      <style>{`
+        .hero-section { padding: 52px 48px 48px; }
+        .hero-inner { display: flex; align-items: flex-end; gap: 60px; flex-wrap: wrap; }
+        .hero-meta { margin-left: auto; padding-bottom: 6px; text-align: right; }
+        .spike-label { margin-bottom: 16px; }
+        .chart-header { padding: 20px 48px 6px; max-width: 1400px; margin: 0 auto; }
+        .bottom-section { padding: 32px 48px 48px; max-width: 1400px; margin: 0 auto; }
+        .bottom-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 20px; align-items: start; }
+        @media (max-width: 768px) {
+          .hero-section { padding: 28px 20px 24px; }
+          .hero-inner { flex-direction: column; gap: 20px; align-items: flex-start; }
+          .hero-meta { margin-left: 0; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+          .spike-label { margin-bottom: 0; }
+          .chart-header { padding: 14px 16px 4px; }
+          .bottom-section { padding: 20px 16px 32px; }
+          .bottom-grid { grid-template-columns: 1fr; }
+        }
+      `}</style>
       <div style={{ minHeight: '100vh' }}>
 
         {/* ── HERO ─────────────────────────────────────────── */}
-        <section style={{
+        <section className="hero-section" style={{
           position: 'relative',
           overflow: 'hidden',
-          padding: '52px 48px 48px',
           borderBottom: `1px solid rgba(${accentRgb},0.1)`,
           animation: spikeActive ? 'spike-pulse 2.2s ease-in-out infinite' : 'none',
         }}>
@@ -313,7 +335,7 @@ export default function Dashboard() {
           </div>
 
           <div style={{ maxWidth: '1400px', margin: '0 auto', position: 'relative' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '60px', flexWrap: 'wrap' }}>
+            <div className="hero-inner">
 
               {/* Price block */}
               <div>
@@ -354,9 +376,9 @@ export default function Dashboard() {
               </div>
 
               {/* Status + meta — pushed right */}
-              <div style={{ marginLeft: 'auto', paddingBottom: '6px', textAlign: 'right' }}>
+              <div className="hero-meta">
                 {/* Spike indicator */}
-                <div style={{ marginBottom: '16px' }}>
+                <div className="spike-label">
                   <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.12em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
                     SPIKE ALERT
                   </div>
@@ -392,9 +414,9 @@ export default function Dashboard() {
 
         {/* ── CHART ────────────────────────────────────────── */}
         <section style={{ padding: '0', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ padding: '20px 48px 6px', maxWidth: '1400px', margin: '0 auto' }}>
+          <div className="chart-header">
             <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.1em', fontFamily: 'var(--font-body)' }}>
-              2-DAY CHART · 15-MIN BARS · EASTERN TIME
+              TODAY · 15-MIN BARS · EASTERN TIME
             </div>
           </div>
           {chartPoints.length < 2 ? (
@@ -410,8 +432,8 @@ export default function Dashboard() {
         </section>
 
         {/* ── BOTTOM TWO-COLUMN ────────────────────────────── */}
-        <section style={{ padding: '32px 48px 48px', maxWidth: '1400px', margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '20px', alignItems: 'start' }}>
+        <section className="bottom-section">
+          <div className="bottom-grid">
 
             {/* Telegram send */}
             <div className="glass-card" style={{ padding: '24px' }}>
