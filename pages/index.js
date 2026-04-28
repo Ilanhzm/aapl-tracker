@@ -101,8 +101,8 @@ export default function Dashboard() {
   useEffect(() => {
     const update = () => {
       const mobile = window.innerWidth <= 768;
-      setPriceFontSize(mobile ? 64 : 88);
-      setChangeFontSize(mobile ? 40 : 56);
+      setPriceFontSize(mobile ? 56 : 88);
+      setChangeFontSize(mobile ? 34 : 56);
     };
     update();
     window.addEventListener('resize', update);
@@ -248,9 +248,9 @@ export default function Dashboard() {
     for (let i = 0; i <= 5; i++) {
       const t = tMin + (i / 5) * tRange;
       const x = toX(t);
-      const label = new Date(t).toLocaleString('en-US', {
+      const label = new Date(t).toLocaleTimeString('en-US', {
         hour: '2-digit', minute: '2-digit', hour12: false,
-        timeZone: 'America/New_York', month: 'short', day: 'numeric',
+        timeZone: 'America/New_York',
       });
       ctx.fillText(label, x, H - 10);
     }
@@ -308,6 +308,8 @@ export default function Dashboard() {
       <style>{`
         .hero-section { padding: 52px 48px 48px; }
         .hero-inner { display: flex; align-items: flex-end; gap: 60px; flex-wrap: wrap; }
+        .price-block { flex-shrink: 0; }
+        .change-block { flex-shrink: 0; padding-bottom: 6px; }
         .hero-meta { margin-left: auto; padding-bottom: 6px; text-align: right; }
         .spike-label { margin-bottom: 16px; }
         .spike-text { display: block; }
@@ -317,12 +319,14 @@ export default function Dashboard() {
         .bottom-section { padding: 32px 48px 48px; max-width: 1400px; margin: 0 auto; }
         .bottom-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 20px; align-items: start; }
         @media (max-width: 768px) {
-          .hero-section { padding: 20px 20px 16px; }
-          .hero-inner { flex-direction: column; gap: 10px; align-items: flex-start; }
-          .hero-meta { margin-left: 0; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+          .hero-section { padding: 18px 20px 14px; }
+          .hero-inner { flex-direction: row; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+          .price-block { flex: 1; min-width: 0; }
+          .change-block { flex: 1; min-width: 0; padding-bottom: 0; }
+          .hero-meta { flex: 0 0 100%; margin-left: 0; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
           .spike-label { margin-bottom: 0; }
           .spike-text { display: none; }
-          .pct-sign { font-size: 28px; }
+          .pct-sign { font-size: 24px; }
           .chart-canvas { height: 250px; }
           .chart-header { padding: 10px 16px 4px; }
           .bottom-section { padding: 16px 16px 32px; }
@@ -357,7 +361,7 @@ export default function Dashboard() {
             <div className="hero-inner">
 
               {/* Price block */}
-              <div>
+              <div className="price-block">
                 <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.14em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
                   {tickerDisplay} — LIVE PRICE
                 </div>
@@ -367,7 +371,7 @@ export default function Dashboard() {
               </div>
 
               {/* Change block */}
-              <div style={{ paddingBottom: '6px' }}>
+              <div className="change-block">
                 <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.12em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
                   {isUp ? 'HIKE' : 'DROP'} · LAST 2 DAYS
                 </div>
