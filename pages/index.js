@@ -328,7 +328,7 @@ export default function Dashboard() {
 
   function playWatermarkSound(bull) {
     try {
-      new Audio(bull ? '/Market%20up.wav' : '/Down%20Market.wav').play();
+      new Audio(bull ? '/market-up.wav' : '/down-market.wav').play().catch(() => {});
     } catch (e) {}
   }
 
