@@ -201,6 +201,12 @@ export default function Dashboard() {
     ctx.stroke();
 
 
+    // Clip to chart area so nothing bleeds past the Y-axis
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(pad.left, 0, W - pad.left - pad.right, H);
+    ctx.clip();
+
     // Gradient fill — drawn per segment so overnight gap is not filled
     const grad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
     grad.addColorStop(0, `rgba(${lineRgb},0.22)`);
@@ -235,6 +241,7 @@ export default function Dashboard() {
     });
     ctx.stroke();
     ctx.shadowBlur = 0;
+    ctx.restore(); // end clip
 
     // Session H/L markers
     const highIdx = prices.indexOf(maxP);
@@ -289,18 +296,11 @@ export default function Dashboard() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, dotCanvas.width, dotCanvas.height);
       if (pt) {
-        const pulse = (Math.sin(Date.now() / 480) + 1) / 2;
-        // Subtle outer glow ring
+        const blink = (Math.sin(Date.now() / 500) + 1) / 2;
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 5 + pulse * 5, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${pt.color}, ${0.15 - pulse * 0.12})`;
+        ctx.arc(pt.x, pt.y, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${pt.color}, ${0.15 + blink * 0.85})`;
         ctx.fill();
-        // Solid dot
-        ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${pt.color}, 1)`; ctx.fill();
-        // White center pinprick
-        ctx.beginPath(); ctx.arc(pt.x, pt.y, 1.2, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff'; ctx.fill();
       }
       animFrame = requestAnimationFrame(animate);
     };
@@ -530,9 +530,6 @@ export default function Dashboard() {
                       <span style={{ fontSize: '12px', color: 'var(--green)', fontFamily: 'var(--font-body)' }}>All clear</span>
                     </div>
                   )}
-                </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
-                  {lastUpdated || '—'}
                 </div>
               </div>
 
