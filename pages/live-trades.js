@@ -52,6 +52,10 @@ export default function LiveTrades() {
   return (
     <Layout>
       <style>{`
+        @keyframes gentle-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%       { opacity: 0.4; transform: scale(0.85); }
+        }
         .trade-card {
           background: rgba(11,13,26,0.7);
           backdrop-filter: blur(16px);
@@ -67,7 +71,7 @@ export default function LiveTrades() {
         }
       `}</style>
 
-      <div style={{ minHeight: '100vh', padding: '48px', maxWidth: '1100px', margin: '0 auto' }}>
+      <div style={{ minHeight: '100vh', padding: '48px', maxWidth: '1100px', margin: '0 auto', background: '#000' }}>
         <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.14em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
           LIVE TRADES
         </div>
@@ -80,30 +84,42 @@ export default function LiveTrades() {
         ) : openTrades.length === 0 ? (
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            minHeight: '55vh', gap: '24px',
+            minHeight: '55vh', gap: '28px',
           }}>
+            {/* Status card */}
             <div style={{
-              overflow: 'hidden',
-              borderRadius: '12px',
-              border: '1px solid rgba(0,232,122,0.18)',
-              boxShadow: '0 0 32px rgba(0,232,122,0.1)',
-              width: '220px',
-              maxWidth: '78vw',
+              display: 'inline-flex', alignItems: 'center', gap: '12px',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: '10px', padding: '12px 22px',
             }}>
+              <span style={{
+                width: '8px', height: '8px', borderRadius: '50%',
+                background: 'var(--green)', display: 'inline-block', flexShrink: 0,
+                animation: 'gentle-pulse 2.5s ease-in-out infinite',
+              }} />
+              <div>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-1)', fontFamily: 'var(--font-display)', letterSpacing: '0.08em' }}>
+                  NO ACTIVE SPIKE
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-3)', fontFamily: 'var(--font-body)', marginTop: '3px' }}>
+                  VIX within normal range — watching for the next move
+                </div>
+              </div>
+            </div>
+
+            {/* Yogi video — borderless so it blends into the black background */}
+            <div style={{ overflow: 'hidden', width: '220px', maxWidth: '78vw' }}>
               <video
                 src="/bull-trades-video.mp4"
                 autoPlay
                 muted
                 loop
                 playsInline
-                style={{
-                  width: '100%',
-                  display: 'block',
-                  marginTop: '-5%',
-                  marginBottom: '-14%',
-                }}
+                style={{ width: '100%', display: 'block', marginTop: '-5%', marginBottom: '-14%' }}
               />
             </div>
+
             <div style={{
               fontSize: '26px', fontWeight: 700, color: 'var(--green)',
               letterSpacing: '0.05em',
@@ -113,7 +129,7 @@ export default function LiveTrades() {
               VIX IS CHILLING
             </div>
             <div style={{ fontSize: '14px', color: 'var(--text-3)', textAlign: 'center', lineHeight: 1.8, fontFamily: 'var(--font-body)', maxWidth: '320px' }}>
-              No active spike trades.
+              Come back when VIX spikes.
               <br />Checks run every 15 min during market hours.
             </div>
           </div>
