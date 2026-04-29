@@ -285,6 +285,13 @@ export default function Dashboard() {
   const accentColor = isUp ? 'var(--green)' : 'var(--red)';
   const accentRgb = isUp ? '0,232,122' : '255,51,86';
 
+  const isMarketOpen = (() => {
+    const et = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const day = et.getDay();
+    const mins = et.getHours() * 60 + et.getMinutes();
+    return day >= 1 && day <= 5 && mins >= 570 && mins < 960; // 9:30–4:00 ET
+  })();
+
   return (
     <Layout>
       <style>{`
@@ -313,6 +320,10 @@ export default function Dashboard() {
           .chart-header { padding: 10px 16px 4px; }
           .bottom-section { padding: 16px 16px 32px; }
           .bottom-grid { grid-template-columns: 1fr; }
+        }
+        @keyframes gentle-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.45; }
         }
       `}</style>
       <div style={{ minHeight: '100vh' }}>
@@ -345,7 +356,7 @@ export default function Dashboard() {
               {/* Price block */}
               <div className="price-block">
                 <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.14em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
-                  PRICE
+                  VIX PRICE
                 </div>
                 <div className="glow-white">
                   <Odometer value={price != null ? price.toFixed(2) : null} fontSize={priceFontSize} color="var(--text-1)" />
@@ -386,10 +397,20 @@ export default function Dashboard() {
                         SPIKE +{spikeData.pctMove}%
                       </span>
                     </div>
+                  ) : !isMarketOpen ? (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px',
+                      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '8px', padding: '6px 14px',
+                      animation: 'gentle-pulse 3.5s ease-in-out infinite',
+                    }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--text-3)', display: 'inline-block' }} />
+                      <span style={{ fontSize: '12px', color: 'var(--text-3)', fontFamily: 'var(--font-body)' }}>Market closed</span>
+                    </div>
                   ) : (
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px',
                       background: 'rgba(0,232,122,0.05)', border: '1px solid rgba(0,232,122,0.12)',
                       borderRadius: '8px', padding: '6px 14px',
+                      animation: 'gentle-pulse 3.5s ease-in-out infinite',
                     }}>
                       <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
                       <span style={{ fontSize: '12px', color: 'var(--green)', fontFamily: 'var(--font-body)' }}>All clear</span>
