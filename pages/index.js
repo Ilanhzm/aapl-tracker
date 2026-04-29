@@ -48,7 +48,9 @@ export default function Dashboard() {
   const canvasRef = useRef(null);
   const dotCanvasRef = useRef(null);
   const lastPointRef = useRef(null);
+  const priceRef = useRef(null);
   const [priceFontSize, setPriceFontSize] = useState(88);
+  const [watermarkAnimating, setWatermarkAnimating] = useState(false);
   const [changeFontSize, setChangeFontSize] = useState(56);
 
   const isUp = change2d !== null && change2d >= 0;
@@ -60,6 +62,11 @@ export default function Dashboard() {
       if (!res.ok) return;
       const data = await res.json();
       setPrice(data.price);
+      if (priceRef.current) {
+        priceRef.current.classList.remove('price-flashing');
+        void priceRef.current.offsetWidth;
+        priceRef.current.classList.add('price-flashing');
+      }
       setChange2d(data.change2d);
       setOpen2d(data.open2d);
       const allPoints = data.chartPoints || [];
@@ -220,6 +227,29 @@ export default function Dashboard() {
     ctx.stroke();
     ctx.shadowBlur = 0;
 
+    // Session H/L markers
+    const highIdx = prices.indexOf(maxP);
+    const lowIdx = prices.indexOf(minP);
+    const highX = toX(chartPoints[highIdx].time);
+    const lowX = toX(chartPoints[lowIdx].time);
+    const highY = toY(maxP);
+    const lowY = toY(minP);
+
+    ctx.font = 'bold 10px "DM Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(${lineRgb}, 0.7)`;
+
+    // High label — above the peak
+    ctx.fillText(`H  ${maxP.toFixed(2)}`, Math.min(Math.max(highX, pad.left + 28), W - pad.right - 28), highY - 8);
+    // Low label — below the trough
+    ctx.fillText(`L  ${minP.toFixed(2)}`, Math.min(Math.max(lowX, pad.left + 28), W - pad.right - 28), lowY + 16);
+
+    // Small tick marks at H/L
+    ctx.strokeStyle = `rgba(${lineRgb}, 0.4)`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(highX - 8, highY); ctx.lineTo(highX + 8, highY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(lowX - 8, lowY); ctx.lineTo(lowX + 8, lowY); ctx.stroke();
+
     lastPointRef.current = { x: toX(lastPt.time), y: toY(lastPt.price), color: lineRgb };
 
     // Time labels — show market open/close anchors + intermediate points
@@ -294,6 +324,38 @@ export default function Dashboard() {
     return !['Sat', 'Sun'].includes(weekday) && (h * 60 + m) >= 570 && (h * 60 + m) < 960;
   })();
 
+  const moodIntensity = change2d !== null ? Math.min(Math.abs(change2d) / 15, 1) : 0;
+
+  function playWatermarkSound(bull) {
+    try {
+      const ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (bull) {
+        [440, 660, 880].forEach((freq, i) => {
+          const osc = ac.createOscillator();
+          const g = ac.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          g.gain.setValueAtTime(0, ac.currentTime + i * 0.13);
+          g.gain.linearRampToValueAtTime(0.22, ac.currentTime + i * 0.13 + 0.04);
+          g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + i * 0.13 + 0.45);
+          osc.connect(g); g.connect(ac.destination);
+          osc.start(ac.currentTime + i * 0.13);
+          osc.stop(ac.currentTime + i * 0.13 + 0.45);
+        });
+      } else {
+        const osc = ac.createOscillator();
+        const g = ac.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, ac.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(55, ac.currentTime + 0.7);
+        g.gain.setValueAtTime(0.28, ac.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.85);
+        osc.connect(g); g.connect(ac.destination);
+        osc.start(); osc.stop(ac.currentTime + 0.85);
+      }
+    } catch (e) {}
+  }
+
   return (
     <Layout>
       <style>{`
@@ -327,6 +389,28 @@ export default function Dashboard() {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.45; }
         }
+        @keyframes price-flash {
+          0%   { filter: brightness(1); }
+          35%  { filter: brightness(2.2) drop-shadow(0 0 18px rgba(237,240,247,0.85)); }
+          100% { filter: brightness(1); }
+        }
+        .price-flashing { animation: price-flash 0.65s ease-out both; }
+        @keyframes watermark-bounce-bull {
+          0%   { transform: scale(1) rotate(0deg); }
+          25%  { transform: scale(1.35) rotate(10deg); }
+          55%  { transform: scale(0.92) rotate(-4deg); }
+          80%  { transform: scale(1.08) rotate(2deg); }
+          100% { transform: scale(1) rotate(0deg); }
+        }
+        @keyframes watermark-bounce-bear {
+          0%   { transform: scale(1) rotate(0deg); }
+          25%  { transform: scale(1.35) rotate(-10deg); }
+          55%  { transform: scale(0.92) rotate(4deg); }
+          80%  { transform: scale(1.08) rotate(-2deg); }
+          100% { transform: scale(1) rotate(0deg); }
+        }
+        .wm-bull { animation: watermark-bounce-bull 0.65s cubic-bezier(.36,.07,.19,.97) both; }
+        .wm-bear { animation: watermark-bounce-bear 0.65s cubic-bezier(.36,.07,.19,.97) both; }
       `}</style>
       <div style={{ minHeight: '100vh' }}>
 
@@ -334,22 +418,62 @@ export default function Dashboard() {
         <section className="hero-section" style={{
           position: 'relative',
           overflow: 'hidden',
-          borderBottom: `1px solid rgba(${accentRgb},0.1)`,
+          borderBottom: `1px solid rgba(${accentRgb},${(0.08 + moodIntensity * 0.25).toFixed(3)})`,
           animation: spikeActive ? 'spike-pulse 2.2s ease-in-out infinite' : 'none',
         }}>
-          {/* Background gradient blob */}
+          {/* Background gradient blob — scales with move intensity */}
           <div style={{
             position: 'absolute', top: '-80px', left: '-60px',
-            width: '600px', height: '600px', borderRadius: '50%',
-            background: `radial-gradient(circle, rgba(${accentRgb},0.07) 0%, transparent 65%)`,
+            width: `${500 + moodIntensity * 500}px`,
+            height: `${500 + moodIntensity * 500}px`,
+            borderRadius: '50%',
+            background: `radial-gradient(circle, rgba(${accentRgb},${(0.05 + moodIntensity * 0.18).toFixed(3)}) 0%, transparent 65%)`,
             pointerEvents: 'none',
+            transition: 'all 1.5s ease',
           }} />
-          {/* Bull/bear watermark */}
-          <div style={{
-            position: 'absolute', right: '48px', top: '50%', transform: 'translateY(-50%)',
-            fontSize: '140px', opacity: 0.04, userSelect: 'none', pointerEvents: 'none',
-          }}>
-            {isUp ? '🐂' : '🐻'}
+          {moodIntensity > 0.4 && (
+            <div style={{
+              position: 'absolute', bottom: '-80px', right: '-40px',
+              width: `${200 + moodIntensity * 300}px`,
+              height: `${200 + moodIntensity * 300}px`,
+              borderRadius: '50%',
+              background: `radial-gradient(circle, rgba(${accentRgb},${(0.03 + moodIntensity * 0.07).toFixed(3)}) 0%, transparent 65%)`,
+              pointerEvents: 'none',
+              transition: 'all 1.5s ease',
+            }} />
+          )}
+          {/* Bull/bear SVG watermark — easter egg, click to activate */}
+          <div
+            style={{ position: 'absolute', right: '48px', top: '50%', transform: 'translateY(-50%)', zIndex: 1, cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => {
+              if (watermarkAnimating) return;
+              setWatermarkAnimating(true);
+              playWatermarkSound(isUp);
+              setTimeout(() => setWatermarkAnimating(false), 700);
+            }}
+          >
+            <div className={watermarkAnimating ? (isUp ? 'wm-bull' : 'wm-bear') : ''} style={{ opacity: 0.055 }}>
+              {isUp ? (
+                <svg width="140" height="140" viewBox="0 0 120 120" fill="white">
+                  <ellipse cx="60" cy="74" rx="32" ry="26"/>
+                  <ellipse cx="60" cy="89" rx="20" ry="13"/>
+                  <ellipse cx="35" cy="66" rx="8" ry="7"/>
+                  <ellipse cx="85" cy="66" rx="8" ry="7"/>
+                  <path d="M43,57 C32,36 20,23 13,12" stroke="white" strokeWidth="8" strokeLinecap="round" fill="none"/>
+                  <path d="M77,57 C88,36 100,23 107,12" stroke="white" strokeWidth="8" strokeLinecap="round" fill="none"/>
+                </svg>
+              ) : (
+                <svg width="140" height="140" viewBox="0 0 120 120" fill="white">
+                  <circle cx="60" cy="72" r="34"/>
+                  <circle cx="30" cy="44" r="15"/>
+                  <circle cx="90" cy="44" r="15"/>
+                  <ellipse cx="60" cy="87" rx="18" ry="12" opacity="0.45"/>
+                  <circle cx="60" cy="81" r="5" opacity="0.5"/>
+                  <ellipse cx="52" cy="68" rx="5" ry="4" opacity="0.3"/>
+                  <ellipse cx="68" cy="68" rx="5" ry="4" opacity="0.3"/>
+                </svg>
+              )}
+            </div>
           </div>
 
           <div style={{ maxWidth: '1400px', margin: '0 auto', position: 'relative' }}>
@@ -360,7 +484,7 @@ export default function Dashboard() {
                 <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.14em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
                   VIX PRICE
                 </div>
-                <div className="glow-white">
+                <div className="glow-white" ref={priceRef}>
                   <Odometer value={price != null ? price.toFixed(2) : null} fontSize={priceFontSize} color="var(--text-1)" />
                 </div>
               </div>
