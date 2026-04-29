@@ -452,25 +452,28 @@ export default function Dashboard() {
               setTimeout(() => setWatermarkAnimating(false), 700);
             }}
           >
-            <div className={watermarkAnimating ? (isUp ? 'wm-bull' : 'wm-bear') : ''} style={{ opacity: 0.055 }}>
+            <div className={watermarkAnimating ? (isUp ? 'wm-bull' : 'wm-bear') : ''} style={{ opacity: 0.13 }}>
               {isUp ? (
-                <svg width="140" height="140" viewBox="0 0 120 120" fill="white">
-                  <ellipse cx="60" cy="74" rx="32" ry="26"/>
-                  <ellipse cx="60" cy="89" rx="20" ry="13"/>
-                  <ellipse cx="35" cy="66" rx="8" ry="7"/>
-                  <ellipse cx="85" cy="66" rx="8" ry="7"/>
-                  <path d="M43,57 C32,36 20,23 13,12" stroke="white" strokeWidth="8" strokeLinecap="round" fill="none"/>
-                  <path d="M77,57 C88,36 100,23 107,12" stroke="white" strokeWidth="8" strokeLinecap="round" fill="none"/>
+                /* Bull — just the horns. Clean, powerful, logo-like */
+                <svg width="150" height="110" viewBox="0 0 130 90" fill="none">
+                  <path d="M 22 72 Q 65 56 108 72" stroke="white" strokeWidth="7" strokeLinecap="round"/>
+                  <path d="M 22 72 C 10 50 6 22 20 10" stroke="white" strokeWidth="7" strokeLinecap="round"/>
+                  <path d="M 108 72 C 120 50 124 22 110 10" stroke="white" strokeWidth="7" strokeLinecap="round"/>
+                  <circle cx="20" cy="10" r="4.5" fill="white"/>
+                  <circle cx="110" cy="10" r="4.5" fill="white"/>
                 </svg>
               ) : (
-                <svg width="140" height="140" viewBox="0 0 120 120" fill="white">
-                  <circle cx="60" cy="72" r="34"/>
-                  <circle cx="30" cy="44" r="15"/>
-                  <circle cx="90" cy="44" r="15"/>
-                  <ellipse cx="60" cy="87" rx="18" ry="12" opacity="0.45"/>
-                  <circle cx="60" cy="81" r="5" opacity="0.5"/>
-                  <ellipse cx="52" cy="68" rx="5" ry="4" opacity="0.3"/>
-                  <ellipse cx="68" cy="68" rx="5" ry="4" opacity="0.3"/>
+                /* Bear — paw print with claws. Fierce, not cute */
+                <svg width="140" height="150" viewBox="0 0 110 125" fill="white">
+                  <ellipse cx="55" cy="92" rx="31" ry="27"/>
+                  <circle cx="17" cy="60" r="12"/>
+                  <circle cx="40" cy="46" r="12"/>
+                  <circle cx="70" cy="46" r="12"/>
+                  <circle cx="93" cy="60" r="12"/>
+                  <path d="M 13 38 L 9 24" stroke="white" strokeWidth="4" strokeLinecap="round"/>
+                  <path d="M 39 34 L 37 20" stroke="white" strokeWidth="4" strokeLinecap="round"/>
+                  <path d="M 71 34 L 73 20" stroke="white" strokeWidth="4" strokeLinecap="round"/>
+                  <path d="M 97 38 L 101 24" stroke="white" strokeWidth="4" strokeLinecap="round"/>
                 </svg>
               )}
             </div>
