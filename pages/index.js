@@ -74,7 +74,7 @@ export default function Dashboard() {
         setChartPoints(allPoints);
       }
       if (data.tickerDisplay) setTickerDisplay(data.tickerDisplay);
-      setLastUpdated(new Date().toLocaleTimeString());
+      setLastUpdated(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
     } catch {}
   }
 
@@ -136,14 +136,17 @@ export default function Dashboard() {
     const minP = Math.min(...prices);
     const maxP = Math.max(...prices);
     const pRange = maxP - minP || 1;
-    const tMin = chartPoints[0].time;
+    // Anchor left edge to 9:30 AM ET of the session date
+    const tMin = (() => {
+      const et = new Date(new Date(chartPoints[0].time).toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      et.setHours(9, 30, 0, 0);
+      return et.getTime();
+    })();
 
-    // Fix right edge to today's 4:00 PM ET so current price sits at the correct
-    // proportional position mid-chart rather than always pinned to the right edge
+    // Anchor right edge to 4:00 PM ET of the session date
     const tMax = (() => {
-      const et = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      const et = new Date(new Date(chartPoints[0].time).toLocaleString('en-US', { timeZone: 'America/New_York' }));
       et.setHours(16, 0, 0, 0);
-      // If market already past close, anchor to last data point so chart doesn't shrink
       return Math.max(et.getTime(), chartPoints[chartPoints.length - 1].time);
     })();
     const tRange = tMax - tMin || 1;
@@ -182,32 +185,6 @@ export default function Dashboard() {
       ctx.fillText(pVal.toFixed(2), pad.left - 8, y + 4);
     }
 
-    // Day labels + vertical dividers at session boundaries
-    ctx.font = 'bold 14px "DM Sans", sans-serif';
-    ctx.textAlign = 'left';
-    // Label the first session (yesterday)
-    const firstLabel = new Date(segments[0][0].time).toLocaleDateString('en-US', {
-      month: 'short', day: 'numeric', timeZone: 'America/New_York',
-    });
-    ctx.fillStyle = 'rgba(255,255,255,0.75)';
-    ctx.fillText(firstLabel, pad.left + 6, pad.top + 18);
-    // Divider + label at start of each subsequent session
-    segments.slice(1).forEach((s) => {
-      const x = toX(s[0].time);
-      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 6]);
-      ctx.beginPath();
-      ctx.moveTo(x, pad.top);
-      ctx.lineTo(x, H - pad.bottom);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      const dateLabel = new Date(s[0].time).toLocaleDateString('en-US', {
-        month: 'short', day: 'numeric', timeZone: 'America/New_York',
-      });
-      ctx.fillStyle = 'rgba(255,255,255,0.75)';
-      ctx.fillText(dateLabel, x + 8, pad.top + 18);
-    });
 
     // Gradient fill — drawn per segment so overnight gap is not filled
     const grad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
@@ -368,7 +345,7 @@ export default function Dashboard() {
               {/* Price block */}
               <div className="price-block">
                 <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.14em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
-                  {tickerDisplay} — LIVE PRICE
+                  PRICE
                 </div>
                 <div className="glow-white">
                   <Odometer value={price != null ? price.toFixed(2) : null} fontSize={priceFontSize} color="var(--text-1)" />
@@ -378,7 +355,7 @@ export default function Dashboard() {
               {/* Change block */}
               <div className="change-block">
                 <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.12em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
-                  {isUp ? 'HIKE' : 'DROP'} · LAST 2 DAYS
+                  2-DAY CHANGE
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '16px', color: accentColor, fontFamily: 'var(--font-display)' }}>
@@ -393,20 +370,12 @@ export default function Dashboard() {
                   </div>
                   <span className="pct-sign" style={{ color: accentColor, fontFamily: 'var(--font-display)' }}>%</span>
                 </div>
-                {open2d != null && (
-                  <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '6px', fontFamily: 'var(--font-mono)' }}>
-                    2-day open: {open2d.toFixed(2)}
-                  </div>
-                )}
               </div>
 
               {/* Status + meta — pushed right */}
               <div className="hero-meta">
                 {/* Spike indicator */}
                 <div className="spike-label">
-                  <div className="spike-text" style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.12em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
-                    SPIKE ALERT
-                  </div>
                   {spikeActive ? (
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px',
                       background: 'rgba(255,51,86,0.08)', border: '1px solid rgba(255,51,86,0.25)',
@@ -427,9 +396,8 @@ export default function Dashboard() {
                     </div>
                   )}
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)', lineHeight: 1.8 }}>
-                  {lastUpdated ? `Updated ${lastUpdated}` : 'Loading…'}
-                  <br />Refreshes every 30s
+                <div style={{ fontSize: '11px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
+                  {lastUpdated || '—'}
                 </div>
               </div>
 
@@ -441,7 +409,11 @@ export default function Dashboard() {
         <section style={{ padding: '0', borderBottom: '1px solid var(--border)' }}>
           <div className="chart-header">
             <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.1em', fontFamily: 'var(--font-body)' }}>
-              TODAY · 15-MIN BARS · EASTERN TIME
+              {chartPoints.length > 0
+                ? new Date(chartPoints[chartPoints.length - 1].time)
+                    .toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })
+                    .toUpperCase() + ' — ' + tickerDisplay
+                : '—'}
             </div>
           </div>
           {chartPoints.length < 2 ? (
