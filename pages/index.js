@@ -191,6 +191,15 @@ export default function Dashboard() {
       ctx.fillText(pVal.toFixed(2), pad.left - 8, y + 4);
     }
 
+    // Y-axis vertical line
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, pad.top);
+    ctx.lineTo(pad.left, H - pad.bottom);
+    ctx.stroke();
+
 
     // Gradient fill — drawn per segment so overnight gap is not filled
     const grad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
@@ -255,7 +264,6 @@ export default function Dashboard() {
     // Time labels — show market open/close anchors + intermediate points
     ctx.fillStyle = '#3d4255';
     ctx.font = '11px "DM Mono", monospace';
-    ctx.textAlign = 'center';
     for (let i = 0; i <= 5; i++) {
       const t = tMin + (i / 5) * tRange;
       const x = toX(t);
@@ -263,6 +271,7 @@ export default function Dashboard() {
         hour: '2-digit', minute: '2-digit', hour12: false,
         timeZone: 'America/New_York',
       });
+      ctx.textAlign = i === 0 ? 'left' : i === 5 ? 'right' : 'center';
       ctx.fillText(label, x, H - 10);
     }
   }, [chartPoints, isUp]);
@@ -281,13 +290,16 @@ export default function Dashboard() {
       ctx.clearRect(0, 0, dotCanvas.width, dotCanvas.height);
       if (pt) {
         const pulse = (Math.sin(Date.now() / 480) + 1) / 2;
+        // Subtle outer glow ring
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 10 + pulse * 14, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${pt.color}, ${0.5 - pulse * 0.5})`;
+        ctx.arc(pt.x, pt.y, 5 + pulse * 5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${pt.color}, ${0.15 - pulse * 0.12})`;
         ctx.fill();
-        ctx.beginPath(); ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+        // Solid dot
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${pt.color}, 1)`; ctx.fill();
-        ctx.beginPath(); ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
+        // White center pinprick
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, 1.2, 0, Math.PI * 2);
         ctx.fillStyle = '#fff'; ctx.fill();
       }
       animFrame = requestAnimationFrame(animate);
