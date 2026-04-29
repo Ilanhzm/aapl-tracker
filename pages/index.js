@@ -136,19 +136,18 @@ export default function Dashboard() {
     const minP = Math.min(...prices);
     const maxP = Math.max(...prices);
     const pRange = maxP - minP || 1;
-    // Anchor left edge to 9:30 AM ET of the session date
-    const tMin = (() => {
-      const et = new Date(new Date(chartPoints[0].time).toLocaleString('en-US', { timeZone: 'America/New_York' }));
-      et.setHours(9, 30, 0, 0);
-      return et.getTime();
-    })();
+    // Convert HH:MM ET on the session date to a real UTC timestamp
+    const etToUTC = (refMs, h, m) => {
+      const dateET = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(refMs));
+      const probe = new Date(`${dateET}T${String(h + 4).padStart(2, '0')}:${String(m).padStart(2, '0')}:00Z`);
+      const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(probe);
+      const ph = parseInt(p.find(x => x.type === 'hour').value);
+      const pm = parseInt(p.find(x => x.type === 'minute').value);
+      return probe.getTime() + ((h * 60 + m) - (ph * 60 + pm)) * 60000;
+    };
 
-    // Anchor right edge to 4:00 PM ET of the session date
-    const tMax = (() => {
-      const et = new Date(new Date(chartPoints[0].time).toLocaleString('en-US', { timeZone: 'America/New_York' }));
-      et.setHours(16, 0, 0, 0);
-      return Math.max(et.getTime(), chartPoints[chartPoints.length - 1].time);
-    })();
+    const tMin = etToUTC(chartPoints[0].time, 9, 30);
+    const tMax = Math.max(etToUTC(chartPoints[0].time, 16, 0), chartPoints[chartPoints.length - 1].time);
     const tRange = tMax - tMin || 1;
 
     const toX = (t) => pad.left + ((t - tMin) / tRange) * (W - pad.left - pad.right);
@@ -286,10 +285,13 @@ export default function Dashboard() {
   const accentRgb = isUp ? '0,232,122' : '255,51,86';
 
   const isMarketOpen = (() => {
-    const et = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
-    const day = et.getDay();
-    const mins = et.getHours() * 60 + et.getMinutes();
-    return day >= 1 && day <= 5 && mins >= 570 && mins < 960; // 9:30–4:00 ET
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(new Date());
+    const weekday = parts.find(p => p.type === 'weekday').value;
+    const h = parseInt(parts.find(p => p.type === 'hour').value);
+    const m = parseInt(parts.find(p => p.type === 'minute').value);
+    return !['Sat', 'Sun'].includes(weekday) && (h * 60 + m) >= 570 && (h * 60 + m) < 960;
   })();
 
   return (
