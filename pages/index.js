@@ -328,7 +328,9 @@ export default function Dashboard() {
 
   function playWatermarkSound(bull) {
     try {
-      new Audio(bull ? '/market-up.wav' : '/down-market.wav').play().catch(() => {});
+      const audio = new Audio(bull ? '/market-up.wav' : '/down-market.wav');
+      audio.volume = 0.6;
+      audio.play().catch(() => {});
     } catch (e) {}
   }
 
@@ -422,6 +424,13 @@ export default function Dashboard() {
           <div
             style={{ position: 'absolute', right: '12px', bottom: '10px', cursor: 'pointer', userSelect: 'none' }}
             onClick={() => {
+              if (watermarkAnimating) return;
+              setWatermarkAnimating(true);
+              playWatermarkSound(isUp);
+              setTimeout(() => setWatermarkAnimating(false), 700);
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault();
               if (watermarkAnimating) return;
               setWatermarkAnimating(true);
               playWatermarkSound(isUp);
