@@ -140,9 +140,16 @@ export default function Dashboard() {
     ctx.fillRect(0, 0, W, H);
 
     const prices = chartPoints.map((p) => p.price);
-    const minP = Math.min(...prices);
-    const maxP = Math.max(...prices);
-    const pRange = maxP - minP || 1;
+    const rawMin = Math.min(...prices);
+    const rawMax = Math.max(...prices);
+    // Enforce a minimum Y-range of 1.5% of price so early-session charts aren't over-zoomed
+    const rawRange = rawMax - rawMin;
+    const minRange = rawMax * 0.015;
+    const pRange = Math.max(rawRange, minRange) * 1.1; // 10% breathing room
+    const pMid = (rawMax + rawMin) / 2;
+    const minP = pMid - pRange / 2;
+    const maxP = pMid + pRange / 2;
+
     // Convert HH:MM ET on the session date to a real UTC timestamp
     const etToUTC = (refMs, h, m) => {
       const dateET = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(refMs));
@@ -154,7 +161,11 @@ export default function Dashboard() {
     };
 
     const tMin = etToUTC(chartPoints[0].time, 9, 30);
-    const tMax = Math.max(etToUTC(chartPoints[0].time, 16, 0), chartPoints[chartPoints.length - 1].time);
+    // tMax: fit to actual data so the line fills the chart; minimum 1 hour shown
+    const tMax = Math.max(
+      chartPoints[chartPoints.length - 1].time,
+      tMin + 60 * 60 * 1000
+    );
     const tRange = tMax - tMin || 1;
 
     const toX = (t) => pad.left + ((t - tMin) / tRange) * (W - pad.left - pad.right);
@@ -179,7 +190,7 @@ export default function Dashboard() {
     // Horizontal grid lines
     for (let i = 0; i <= 4; i++) {
       const y = pad.top + (i / 4) * (H - pad.top - pad.bottom);
-      const pVal = maxP - (i / 4) * pRange;
+      const pVal = maxP - (i / 4) * (maxP - minP);
       ctx.strokeStyle = 'rgba(255,255,255,0.04)';
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 8]);
@@ -243,24 +254,21 @@ export default function Dashboard() {
     ctx.shadowBlur = 0;
     ctx.restore(); // end clip
 
-    // Session H/L markers
-    const highIdx = prices.indexOf(maxP);
-    const lowIdx = prices.indexOf(minP);
+    // Session H/L markers (use raw prices for labels, not the padded range)
+    const highIdx = prices.indexOf(rawMax);
+    const lowIdx = prices.indexOf(rawMin);
     const highX = toX(chartPoints[highIdx].time);
     const lowX = toX(chartPoints[lowIdx].time);
-    const highY = toY(maxP);
-    const lowY = toY(minP);
+    const highY = toY(rawMax);
+    const lowY = toY(rawMin);
 
     ctx.font = 'bold 10px "DM Mono", monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = `rgba(${lineRgb}, 0.7)`;
 
-    // High label — above the peak
-    ctx.fillText(`H  ${maxP.toFixed(2)}`, Math.min(Math.max(highX, pad.left + 28), W - pad.right - 28), highY - 8);
-    // Low label — below the trough
-    ctx.fillText(`L  ${minP.toFixed(2)}`, Math.min(Math.max(lowX, pad.left + 28), W - pad.right - 28), lowY + 16);
+    ctx.fillText(`H  ${rawMax.toFixed(2)}`, Math.min(Math.max(highX, pad.left + 28), W - pad.right - 28), highY - 8);
+    ctx.fillText(`L  ${rawMin.toFixed(2)}`, Math.min(Math.max(lowX, pad.left + 28), W - pad.right - 28), lowY + 16);
 
-    // Small tick marks at H/L
     ctx.strokeStyle = `rgba(${lineRgb}, 0.4)`;
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(highX - 8, highY); ctx.lineTo(highX + 8, highY); ctx.stroke();
