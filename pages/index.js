@@ -63,11 +63,16 @@ export default function Dashboard() {
       setChange2d(data.change2d);
       setOpen2d(data.open2d);
       const allPoints = data.chartPoints || [];
-      const nowET = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' });
-      const todayPoints = allPoints.filter(p =>
-        new Date(p.time).toLocaleDateString('en-US', { timeZone: 'America/New_York' }) === nowET
-      );
-      setChartPoints(todayPoints.length >= 2 ? todayPoints : allPoints);
+      if (allPoints.length >= 2) {
+        const lastDate = new Date(allPoints[allPoints.length - 1].time)
+          .toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+        const lastSession = allPoints.filter(p =>
+          new Date(p.time).toLocaleDateString('en-US', { timeZone: 'America/New_York' }) === lastDate
+        );
+        setChartPoints(lastSession.length >= 2 ? lastSession : allPoints);
+      } else {
+        setChartPoints(allPoints);
+      }
       if (data.tickerDisplay) setTickerDisplay(data.tickerDisplay);
       setLastUpdated(new Date().toLocaleTimeString());
     } catch {}
