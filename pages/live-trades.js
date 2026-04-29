@@ -80,12 +80,28 @@ export default function LiveTrades() {
         ) : openTrades.length === 0 ? (
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            minHeight: '55vh', gap: '20px',
+            minHeight: '55vh', gap: '24px',
           }}>
-            <FloatingYogi />
+            <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.14em', fontFamily: 'var(--font-body)' }}>
+              LAST EXAMPLE TRADE
+            </div>
+            <video
+              src="/bull-trades-video.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              style={{
+                width: '300px',
+                maxWidth: '88vw',
+                borderRadius: '16px',
+                border: '1px solid rgba(0,232,122,0.18)',
+                boxShadow: '0 0 48px rgba(0,232,122,0.12)',
+              }}
+            />
             <div style={{
               fontSize: '26px', fontWeight: 700, color: 'var(--green)',
-              letterSpacing: '0.05em', marginTop: '10px',
+              letterSpacing: '0.05em',
               fontFamily: 'var(--font-display)',
               textShadow: '0 0 28px rgba(0,232,122,0.45)',
             }}>
