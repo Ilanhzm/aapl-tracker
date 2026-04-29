@@ -328,31 +328,7 @@ export default function Dashboard() {
 
   function playWatermarkSound(bull) {
     try {
-      const ac = new (window.AudioContext || window.webkitAudioContext)();
-      if (bull) {
-        [440, 660, 880].forEach((freq, i) => {
-          const osc = ac.createOscillator();
-          const g = ac.createGain();
-          osc.type = 'sine';
-          osc.frequency.value = freq;
-          g.gain.setValueAtTime(0, ac.currentTime + i * 0.13);
-          g.gain.linearRampToValueAtTime(0.22, ac.currentTime + i * 0.13 + 0.04);
-          g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + i * 0.13 + 0.45);
-          osc.connect(g); g.connect(ac.destination);
-          osc.start(ac.currentTime + i * 0.13);
-          osc.stop(ac.currentTime + i * 0.13 + 0.45);
-        });
-      } else {
-        const osc = ac.createOscillator();
-        const g = ac.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(180, ac.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(55, ac.currentTime + 0.7);
-        g.gain.setValueAtTime(0.28, ac.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.85);
-        osc.connect(g); g.connect(ac.destination);
-        osc.start(); osc.stop(ac.currentTime + 0.85);
-      }
+      new Audio(bull ? '/Market up.wav' : '/Down Market.wav').play();
     } catch (e) {}
   }
 
