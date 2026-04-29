@@ -442,9 +442,9 @@ export default function Dashboard() {
               transition: 'all 1.5s ease',
             }} />
           )}
-          {/* Bull/bear SVG watermark — easter egg, click to activate */}
+          {/* Bull/bear watermark — behind content (placed before content div in DOM), easter egg on click */}
           <div
-            style={{ position: 'absolute', right: '48px', top: '50%', transform: 'translateY(-50%)', zIndex: 1, cursor: 'pointer', userSelect: 'none' }}
+            style={{ position: 'absolute', right: '12px', bottom: '10px', cursor: 'pointer', userSelect: 'none' }}
             onClick={() => {
               if (watermarkAnimating) return;
               setWatermarkAnimating(true);
@@ -452,10 +452,10 @@ export default function Dashboard() {
               setTimeout(() => setWatermarkAnimating(false), 700);
             }}
           >
-            <div className={watermarkAnimating ? (isUp ? 'wm-bull' : 'wm-bear') : ''} style={{ opacity: 0.18 }}>
+            <div className={watermarkAnimating ? (isUp ? 'wm-bull' : 'wm-bear') : ''} style={{ opacity: 0.22 }}>
               <img
                 src={isUp ? '/bull-market.png' : '/bear-market.png'}
-                width={200}
+                width={130}
                 style={{
                   display: 'block',
                   filter: isUp
