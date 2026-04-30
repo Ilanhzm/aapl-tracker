@@ -161,11 +161,8 @@ export default function Dashboard() {
     };
 
     const tMin = etToUTC(chartPoints[0].time, 9, 30);
-    // tMax: fit to actual data so the line fills the chart; minimum 1 hour shown
-    const tMax = Math.max(
-      chartPoints[chartPoints.length - 1].time,
-      tMin + 60 * 60 * 1000
-    );
+    // Fixed x-axis: always 9:30 AM → 4:00 PM ET; data builds left to right during the session
+    const tMax = etToUTC(chartPoints[0].time, 16, 0);
     const tRange = tMax - tMin || 1;
 
     const toX = (t) => pad.left + ((t - tMin) / tRange) * (W - pad.left - pad.right);
