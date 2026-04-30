@@ -58,6 +58,9 @@ export default function Dashboard() {
   const rageClicksRef = useRef(0);
   const rageTimerRef = useRef(null);
   const konamiRef = useRef(0);
+  const [chartEgg, setChartEgg] = useState(false);
+  const chartClicksRef = useRef(0);
+  const chartClickTimerRef = useRef(null);
 
   const isUp = change2d !== null && change2d >= 0;
   const spikeActive = spikeData?.alerted;
@@ -150,7 +153,7 @@ export default function Dashboard() {
     if (ragePhase !== 'crash') return;
     const id = setInterval(() => {
       setRageDisplayPrice((Math.random() * 40 + 55).toFixed(2));
-    }, 90);
+    }, 260);
     return () => clearInterval(id);
   }, [ragePhase]);
 
@@ -384,10 +387,27 @@ export default function Dashboard() {
       rageClicksRef.current = 0;
       setRagePhase('crash');
       setTimeout(() => setRagePhase('kidding'), 2500);
-      setTimeout(() => setRagePhase('off'), 4500);
+      setTimeout(() => setRagePhase('off'), 5500);
       return;
     }
     rageTimerRef.current = setTimeout(() => { rageClicksRef.current = 0; }, 1500);
+  }
+
+  function handleChartClick() {
+    chartClicksRef.current += 1;
+    clearTimeout(chartClickTimerRef.current);
+    if (chartClicksRef.current >= 3) {
+      chartClicksRef.current = 0;
+      try {
+        const a = new Audio('/chart-easter-egg.wav');
+        a.volume = 0.7;
+        a.play().catch(() => {});
+      } catch(e) {}
+      setChartEgg(true);
+      setTimeout(() => setChartEgg(false), 4500);
+      return;
+    }
+    chartClickTimerRef.current = setTimeout(() => { chartClicksRef.current = 0; }, 600);
   }
 
   function playWatermarkSound(bull) {
@@ -462,6 +482,18 @@ export default function Dashboard() {
         @keyframes rage-flash {
           0%, 100% { background: rgba(180,0,30,0.10); }
           50%       { background: rgba(255,0,40,0.28); }
+        }
+        @keyframes draw-flatline {
+          from { stroke-dashoffset: 900; }
+          to   { stroke-dashoffset: 0; }
+        }
+        @keyframes egg-text-appear {
+          0%   { opacity: 0; transform: translateY(6px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes egg-fade-out {
+          0%   { opacity: 1; }
+          100% { opacity: 0; }
         }
       `}</style>
       <div style={{ minHeight: '100vh' }}>
@@ -615,9 +647,43 @@ export default function Dashboard() {
               {chartPoints.length === 0 ? 'Loading chart…' : 'Not enough data'}
             </div>
           ) : (
-            <div style={{ position: 'relative', padding: '0 0 0 0' }}>
+            <div style={{ position: 'relative', padding: '0 0 0 0' }} onClick={handleChartClick}>
               <canvas ref={canvasRef} className="chart-canvas" style={{ width: '100%', display: 'block' }} />
               <canvas ref={dotCanvasRef} className="chart-canvas" style={{ width: '100%', display: 'block', position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
+
+              {/* Easter Egg 3: triple-click chart overlay */}
+              {chartEgg && (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(4,5,9,0.72)',
+                  pointerEvents: 'none',
+                  animation: 'egg-fade-out 0.6s ease 3.8s both',
+                }}>
+                  <svg viewBox="0 0 500 80" style={{ width: '80%', maxWidth: '420px', overflow: 'visible' }}>
+                    <polyline
+                      points="0,40 180,40 210,40 225,5 240,75 255,40 280,40 500,40"
+                      fill="none"
+                      stroke="rgba(237,240,247,0.7)"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeDasharray="900"
+                      strokeDashoffset="900"
+                      style={{ animation: 'draw-flatline 1.6s ease forwards' }}
+                    />
+                  </svg>
+                  <div style={{
+                    marginTop: '20px',
+                    fontSize: '13px', color: 'var(--text-3)',
+                    fontFamily: 'var(--font-mono)', letterSpacing: '0.14em',
+                    animation: 'egg-text-appear 0.6s ease 2s both',
+                    opacity: 0,
+                  }}>
+                    EVEN THE VIX SLEEPS.
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>
