@@ -52,6 +52,12 @@ export default function Dashboard() {
   const [priceFontSize, setPriceFontSize] = useState(88);
   const [watermarkAnimating, setWatermarkAnimating] = useState(false);
   const [changeFontSize, setChangeFontSize] = useState(56);
+  const [ragePhase, setRagePhase] = useState('off');
+  const [rageDisplayPrice, setRageDisplayPrice] = useState('89.53');
+  const [showClassified, setShowClassified] = useState(false);
+  const rageClicksRef = useRef(0);
+  const rageTimerRef = useRef(null);
+  const konamiRef = useRef(0);
 
   const isUp = change2d !== null && change2d >= 0;
   const spikeActive = spikeData?.alerted;
@@ -120,6 +126,33 @@ export default function Dashboard() {
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }, []);
+
+  // Konami code: ↑↑↓↓←→←→BA → classified briefing
+  useEffect(() => {
+    const SEQ = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+    const onKey = (e) => {
+      if (e.key === SEQ[konamiRef.current]) {
+        konamiRef.current++;
+        if (konamiRef.current === SEQ.length) {
+          konamiRef.current = 0;
+          setShowClassified(true);
+        }
+      } else {
+        konamiRef.current = e.key === SEQ[0] ? 1 : 0;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Rage mode: spin fake prices during crash phase
+  useEffect(() => {
+    if (ragePhase !== 'crash') return;
+    const id = setInterval(() => {
+      setRageDisplayPrice((Math.random() * 40 + 55).toFixed(2));
+    }, 90);
+    return () => clearInterval(id);
+  }, [ragePhase]);
 
   // Draw chart
   useEffect(() => {
@@ -343,6 +376,20 @@ export default function Dashboard() {
 
   const moodIntensity = change2d !== null ? Math.min(Math.abs(change2d) / 15, 1) : 0;
 
+  function handlePriceClick() {
+    if (ragePhase !== 'off') return;
+    rageClicksRef.current += 1;
+    clearTimeout(rageTimerRef.current);
+    if (rageClicksRef.current >= 7) {
+      rageClicksRef.current = 0;
+      setRagePhase('crash');
+      setTimeout(() => setRagePhase('kidding'), 2500);
+      setTimeout(() => setRagePhase('off'), 4500);
+      return;
+    }
+    rageTimerRef.current = setTimeout(() => { rageClicksRef.current = 0; }, 1500);
+  }
+
   function playWatermarkSound(bull) {
     try {
       const audio = new Audio(bull ? '/market-up.wav' : '/down-market.wav');
@@ -406,6 +453,16 @@ export default function Dashboard() {
         }
         .wm-bull { animation: watermark-bounce-bull 0.65s cubic-bezier(.36,.07,.19,.97) both; }
         .wm-bear { animation: watermark-bounce-bear 0.65s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes stamp-in {
+          0%   { transform: rotate(-8deg) scale(2.8); opacity: 0; }
+          55%  { transform: rotate(-8deg) scale(0.93); opacity: 1; }
+          75%  { transform: rotate(-8deg) scale(1.06); }
+          100% { transform: rotate(-8deg) scale(1); }
+        }
+        @keyframes rage-flash {
+          0%, 100% { background: rgba(180,0,30,0.10); }
+          50%       { background: rgba(255,0,40,0.28); }
+        }
       `}</style>
       <div style={{ minHeight: '100vh' }}>
 
@@ -472,8 +529,8 @@ export default function Dashboard() {
           <div style={{ maxWidth: '1400px', margin: '0 auto', position: 'relative' }}>
             <div className="hero-inner">
 
-              {/* Price block */}
-              <div className="price-block">
+              {/* Price block — rage-click easter egg: 7 rapid clicks */}
+              <div className="price-block" onClick={handlePriceClick} style={{ cursor: 'default', userSelect: 'none' }}>
                 <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.14em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
                   VIX PRICE
                 </div>
@@ -676,6 +733,151 @@ export default function Dashboard() {
           </div>
         </section>
       </div>
+
+      {/* ── EASTER EGG 1: RAGE CLICK ─────────────────────── */}
+      {ragePhase !== 'off' && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: '32px',
+          animation: ragePhase === 'crash' ? 'rage-flash 0.25s ease-in-out infinite' : 'fade-in 0.4s ease both',
+          background: ragePhase === 'crash' ? undefined : 'rgba(0,0,0,0.82)',
+        }}>
+          {ragePhase === 'crash' ? (
+            <>
+              <div style={{
+                fontSize: 'clamp(22px, 5vw, 64px)', fontWeight: 900,
+                color: '#ff3356', border: '5px solid #ff3356',
+                padding: '14px 28px', letterSpacing: '0.04em',
+                fontFamily: 'var(--font-display)',
+                animation: 'stamp-in 0.32s cubic-bezier(.36,.07,.19,.97) both',
+                textShadow: '0 0 40px rgba(255,51,86,0.9)',
+                boxShadow: '0 0 60px rgba(255,51,86,0.25)',
+              }}>
+                MARKET IS CRASHING
+              </div>
+              <div style={{
+                fontSize: 'clamp(60px, 14vw, 150px)', fontWeight: 900,
+                color: '#ff3356', fontFamily: 'var(--font-mono)',
+                textShadow: '0 0 60px rgba(255,51,86,0.85)',
+                letterSpacing: '-0.02em', lineHeight: 1,
+              }}>
+                {rageDisplayPrice}
+              </div>
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', animation: 'fade-in 0.5s ease both' }}>
+              <div style={{
+                fontSize: 'clamp(36px, 8vw, 92px)', fontWeight: 900,
+                color: 'var(--green)', fontFamily: 'var(--font-display)',
+                textShadow: '0 0 50px rgba(0,232,122,0.85)',
+                letterSpacing: '-0.02em',
+              }}>
+                JUST KIDDING
+              </div>
+              <div style={{ marginTop: '14px', fontSize: '16px', color: 'var(--text-3)', fontFamily: 'var(--font-body)' }}>
+                The VIX is fine. Probably.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── EASTER EGG 2: KONAMI CODE ────────────────────── */}
+      {showClassified && (
+        <div
+          onClick={() => setShowClassified(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.90)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '20px',
+            animation: 'fade-in 0.3s ease both',
+            cursor: 'pointer',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#f0ebe0',
+              color: '#1a1a1a',
+              fontFamily: '"Courier New", monospace',
+              padding: '40px 44px',
+              maxWidth: '540px',
+              width: '100%',
+              position: 'relative',
+              boxShadow: '0 0 100px rgba(0,0,0,0.9)',
+              animation: 'card-enter 0.35s cubic-bezier(.2,.8,.4,1) both',
+              cursor: 'default',
+            }}
+          >
+            {/* Background stamp watermark */}
+            <div style={{
+              position: 'absolute', top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%) rotate(-22deg)',
+              fontSize: '68px', fontWeight: 900,
+              color: 'rgba(180,0,0,0.10)', letterSpacing: '0.06em',
+              whiteSpace: 'nowrap', pointerEvents: 'none', userSelect: 'none',
+            }}>CLASSIFIED</div>
+
+            {/* Header */}
+            <div style={{ borderBottom: '2px solid #333', paddingBottom: '12px', marginBottom: '20px' }}>
+              <div style={{ fontSize: '10px', letterSpacing: '0.18em', color: '#888', marginBottom: '4px' }}>
+                UNITED STATES VOLATILITY INTELLIGENCE BUREAU
+              </div>
+              <div style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '0.1em', color: '#c00' }}>
+                ███ TOP SECRET ███
+              </div>
+              <div style={{ fontSize: '10px', letterSpacing: '0.1em', marginTop: '4px', color: '#555' }}>
+                VIX FIELD REPORT — FOR AUTHORIZED EYES ONLY
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ fontSize: '13px', lineHeight: 2, color: '#222' }}>
+              <div><strong>DATE:</strong> {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+              <div><strong>SUBJECT:</strong> Current Volatility Status Assessment</div>
+              <div style={{ marginTop: '14px' }}>
+                Field instruments report VIX at <strong>{price != null ? price.toFixed(2) : '██.██'}</strong>.
+                {change2d != null
+                  ? change2d > 0
+                    ? ` Market anxiety trending UP ▲${change2d.toFixed(2)}% over 2 days.`
+                    : ` Market appears calm ▼${Math.abs(change2d).toFixed(2)}% over 2 days.`
+                  : ' Awaiting field operatives.'}
+              </div>
+              <div style={{ marginTop: '10px' }}>
+                Analysts confirm that panic is ████████ and the public is advised to ████████ their ██████ accordingly.
+              </div>
+              <div style={{ marginTop: '10px' }}>
+                <strong>ANALYST NOTE:</strong> "It won't last."
+              </div>
+              <div style={{ marginTop: '10px', fontSize: '11px', color: '#888' }}>
+                — Agent ██████, Division of Irrational Exuberance
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              marginTop: '24px', borderTop: '1px solid #bbb', paddingTop: '14px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <div style={{ fontSize: '10px', color: '#aaa', letterSpacing: '0.1em' }}>DESTROY AFTER READING</div>
+              <button
+                onClick={() => setShowClassified(false)}
+                style={{
+                  background: '#1a1a1a', color: '#f0ebe0',
+                  border: 'none', padding: '8px 20px', cursor: 'pointer',
+                  fontFamily: '"Courier New", monospace',
+                  fontSize: '12px', letterSpacing: '0.12em',
+                }}
+              >
+                DECLASSIFIED ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </Layout>
   );
 }
