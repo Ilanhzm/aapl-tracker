@@ -54,13 +54,8 @@ export default function Dashboard() {
   const [changeFontSize, setChangeFontSize] = useState(56);
   const [ragePhase, setRagePhase] = useState('off');
   const [rageDisplayPrice, setRageDisplayPrice] = useState('89.53');
-  const [showClassified, setShowClassified] = useState(false);
   const rageClicksRef = useRef(0);
   const rageTimerRef = useRef(null);
-  const konamiRef = useRef(0);
-  const [chartEgg, setChartEgg] = useState(false);
-  const chartClicksRef = useRef(0);
-  const chartClickTimerRef = useRef(null);
 
   const isUp = change2d !== null && change2d >= 0;
   const spikeActive = spikeData?.alerted;
@@ -130,23 +125,6 @@ export default function Dashboard() {
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  // Konami code: ↑↑↓↓←→←→BA → classified briefing
-  useEffect(() => {
-    const SEQ = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
-    const onKey = (e) => {
-      if (e.key === SEQ[konamiRef.current]) {
-        konamiRef.current++;
-        if (konamiRef.current === SEQ.length) {
-          konamiRef.current = 0;
-          setShowClassified(true);
-        }
-      } else {
-        konamiRef.current = e.key === SEQ[0] ? 1 : 0;
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
 
   // Rage mode: spin fake prices during crash phase
   useEffect(() => {
@@ -393,24 +371,7 @@ export default function Dashboard() {
     rageTimerRef.current = setTimeout(() => { rageClicksRef.current = 0; }, 1500);
   }
 
-  function handleChartClick() {
-    chartClicksRef.current += 1;
-    clearTimeout(chartClickTimerRef.current);
-    if (chartClicksRef.current >= 3) {
-      chartClicksRef.current = 0;
-      try {
-        const a = new Audio('/chart-easter-egg.wav');
-        a.volume = 0.7;
-        a.play().catch(() => {});
-      } catch(e) {}
-      setChartEgg(true);
-      setTimeout(() => setChartEgg(false), 4500);
-      return;
-    }
-    chartClickTimerRef.current = setTimeout(() => { chartClicksRef.current = 0; }, 600);
-  }
-
-  function playWatermarkSound(bull) {
+function playWatermarkSound(bull) {
     try {
       const audio = new Audio(bull ? '/market-up.wav' : '/down-market.wav');
       audio.volume = 0.6;
@@ -482,18 +443,6 @@ export default function Dashboard() {
         @keyframes rage-flash {
           0%, 100% { background: rgba(180,0,30,0.10); }
           50%       { background: rgba(255,0,40,0.28); }
-        }
-        @keyframes draw-flatline {
-          from { stroke-dashoffset: 900; }
-          to   { stroke-dashoffset: 0; }
-        }
-        @keyframes egg-text-appear {
-          0%   { opacity: 0; transform: translateY(6px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes egg-fade-out {
-          0%   { opacity: 1; }
-          100% { opacity: 0; }
         }
       `}</style>
       <div style={{ minHeight: '100vh' }}>
@@ -647,43 +596,9 @@ export default function Dashboard() {
               {chartPoints.length === 0 ? 'Loading chart…' : 'Not enough data'}
             </div>
           ) : (
-            <div style={{ position: 'relative', padding: '0 0 0 0' }} onClick={handleChartClick}>
+            <div style={{ position: 'relative', padding: '0 0 0 0' }}>
               <canvas ref={canvasRef} className="chart-canvas" style={{ width: '100%', display: 'block' }} />
               <canvas ref={dotCanvasRef} className="chart-canvas" style={{ width: '100%', display: 'block', position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
-
-              {/* Easter Egg 3: triple-click chart overlay */}
-              {chartEgg && (
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  background: 'rgba(4,5,9,0.72)',
-                  pointerEvents: 'none',
-                  animation: 'egg-fade-out 0.6s ease 3.8s both',
-                }}>
-                  <svg viewBox="0 0 500 80" style={{ width: '80%', maxWidth: '420px', overflow: 'visible' }}>
-                    <polyline
-                      points="0,40 180,40 210,40 225,5 240,75 255,40 280,40 500,40"
-                      fill="none"
-                      stroke="rgba(237,240,247,0.7)"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeDasharray="900"
-                      strokeDashoffset="900"
-                      style={{ animation: 'draw-flatline 1.6s ease forwards' }}
-                    />
-                  </svg>
-                  <div style={{
-                    marginTop: '20px',
-                    fontSize: '13px', color: 'var(--text-3)',
-                    fontFamily: 'var(--font-mono)', letterSpacing: '0.14em',
-                    animation: 'egg-text-appear 0.6s ease 2s both',
-                    opacity: 0,
-                  }}>
-                    EVEN THE VIX SLEEPS.
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </section>
@@ -849,100 +764,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── EASTER EGG 2: KONAMI CODE ────────────────────── */}
-      {showClassified && (
-        <div
-          onClick={() => setShowClassified(false)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 9999,
-            background: 'rgba(0,0,0,0.90)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '20px',
-            animation: 'fade-in 0.3s ease both',
-            cursor: 'pointer',
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: '#f0ebe0',
-              color: '#1a1a1a',
-              fontFamily: '"Courier New", monospace',
-              padding: '40px 44px',
-              maxWidth: '540px',
-              width: '100%',
-              position: 'relative',
-              boxShadow: '0 0 100px rgba(0,0,0,0.9)',
-              animation: 'card-enter 0.35s cubic-bezier(.2,.8,.4,1) both',
-              cursor: 'default',
-            }}
-          >
-            {/* Background stamp watermark */}
-            <div style={{
-              position: 'absolute', top: '50%', left: '50%',
-              transform: 'translate(-50%, -50%) rotate(-22deg)',
-              fontSize: '68px', fontWeight: 900,
-              color: 'rgba(180,0,0,0.10)', letterSpacing: '0.06em',
-              whiteSpace: 'nowrap', pointerEvents: 'none', userSelect: 'none',
-            }}>CLASSIFIED</div>
-
-            {/* Header */}
-            <div style={{ borderBottom: '2px solid #333', paddingBottom: '12px', marginBottom: '20px' }}>
-              <div style={{ fontSize: '10px', letterSpacing: '0.18em', color: '#888', marginBottom: '4px' }}>
-                UNITED STATES VOLATILITY INTELLIGENCE BUREAU
-              </div>
-              <div style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '0.1em', color: '#c00' }}>
-                ███ TOP SECRET ███
-              </div>
-              <div style={{ fontSize: '10px', letterSpacing: '0.1em', marginTop: '4px', color: '#555' }}>
-                VIX FIELD REPORT — FOR AUTHORIZED EYES ONLY
-              </div>
-            </div>
-
-            {/* Body */}
-            <div style={{ fontSize: '13px', lineHeight: 2, color: '#222' }}>
-              <div><strong>DATE:</strong> {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
-              <div><strong>SUBJECT:</strong> Current Volatility Status Assessment</div>
-              <div style={{ marginTop: '14px' }}>
-                Field instruments report VIX at <strong>{price != null ? price.toFixed(2) : '██.██'}</strong>.
-                {change2d != null
-                  ? change2d > 0
-                    ? ` Market anxiety trending UP ▲${change2d.toFixed(2)}% over 2 days.`
-                    : ` Market appears calm ▼${Math.abs(change2d).toFixed(2)}% over 2 days.`
-                  : ' Awaiting field operatives.'}
-              </div>
-              <div style={{ marginTop: '10px' }}>
-                Analysts confirm that panic is ████████ and the public is advised to ████████ their ██████ accordingly.
-              </div>
-              <div style={{ marginTop: '10px' }}>
-                <strong>ANALYST NOTE:</strong> "It won't last."
-              </div>
-              <div style={{ marginTop: '10px', fontSize: '11px', color: '#888' }}>
-                — Agent ██████, Division of Irrational Exuberance
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div style={{
-              marginTop: '24px', borderTop: '1px solid #bbb', paddingTop: '14px',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            }}>
-              <div style={{ fontSize: '10px', color: '#aaa', letterSpacing: '0.1em' }}>DESTROY AFTER READING</div>
-              <button
-                onClick={() => setShowClassified(false)}
-                style={{
-                  background: '#1a1a1a', color: '#f0ebe0',
-                  border: 'none', padding: '8px 20px', cursor: 'pointer',
-                  fontFamily: '"Courier New", monospace',
-                  fontSize: '12px', letterSpacing: '0.12em',
-                }}
-              >
-                DECLASSIFIED ✕
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </Layout>
   );
