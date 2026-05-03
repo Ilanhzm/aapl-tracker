@@ -357,6 +357,14 @@ export default function Dashboard() {
 
   const moodIntensity = change2d !== null ? Math.min(Math.abs(change2d) / 15, 1) : 0;
 
+  // Progress ring: fills 0→100% as VIX change approaches 20% (spike threshold)
+  const ringProgress = change2d !== null && isUp ? Math.min(Math.abs(change2d) / 20, 1) : 0;
+  const ringD = Math.round(changeFontSize * 1.22);
+  const ringR = ringD / 2 - 5;
+  const ringC = ringD / 2;
+  const ringCirc = 2 * Math.PI * ringR;
+  const ringStroke = changeFontSize > 40 ? 3 : 2.5;
+
   function handlePriceClick() {
     if (ragePhase !== 'off') return;
     rageClicksRef.current += 1;
@@ -536,7 +544,26 @@ function playWatermarkSound(bull) {
                       color={isUp ? '#00e87a' : '#ff3356'}
                     />
                   </div>
-                  <span className="pct-sign" style={{ color: accentColor, fontFamily: 'var(--font-display)' }}>%</span>
+                  <svg width={ringD} height={ringD} style={{ display: 'block', flexShrink: 0 }}>
+                    <circle cx={ringC} cy={ringC} r={ringR} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={ringStroke} />
+                    <circle
+                      cx={ringC} cy={ringC} r={ringR}
+                      fill="none" stroke={accentColor} strokeWidth={ringStroke}
+                      strokeDasharray={ringCirc}
+                      strokeDashoffset={ringCirc * (1 - ringProgress)}
+                      strokeLinecap="round"
+                      transform={`rotate(-90 ${ringC} ${ringC})`}
+                      style={{ transition: 'stroke-dashoffset 1.2s ease' }}
+                    />
+                    <text
+                      x={ringC} y={ringC}
+                      textAnchor="middle" dominantBaseline="central"
+                      fill={accentColor}
+                      fontSize={Math.round(changeFontSize * 0.44)}
+                      fontWeight="700"
+                      fontFamily="Syne, sans-serif"
+                    >%</text>
+                  </svg>
                 </div>
               </div>
 
