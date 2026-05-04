@@ -117,7 +117,7 @@ export default function Dashboard() {
   useEffect(() => {
     const update = () => {
       const mobile = window.innerWidth <= 768;
-      setPriceFontSize(mobile ? 56 : 88);
+      setPriceFontSize(mobile ? 80 : 88);
       setChangeFontSize(mobile ? 34 : 56);
     };
     update();
@@ -402,19 +402,30 @@ function playWatermarkSound(bull) {
         .chart-header { padding: 20px 48px 6px; max-width: 1400px; margin: 0 auto; }
         .bottom-section { padding: 32px 48px 48px; max-width: 1400px; margin: 0 auto; }
         .bottom-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 20px; align-items: start; }
+        .change-desktop { display: flex; }
+        .change-mobile { display: none; }
+        .change-label-desktop { display: block; }
+        .telegram-btn-arrow { display: none; }
         @media (max-width: 768px) {
-          .hero-section { padding: 18px 20px 14px; }
-          .hero-inner { flex-direction: row; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
-          .price-block { flex: 1; min-width: 0; }
-          .change-block { flex: 1; min-width: 0; padding-bottom: 0; }
-          .hero-meta { flex: 0 0 100%; margin-left: 0; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+          .hero-section { padding: 18px 20px 24px; }
+          .hero-inner { flex-direction: column !important; align-items: center !important; text-align: center !important; gap: 4px !important; flex-wrap: nowrap !important; }
+          .price-block { flex: none !important; width: 100%; }
+          .change-block { flex: none !important; width: 100%; display: flex !important; flex-direction: column !important; align-items: center !important; padding-bottom: 0 !important; }
+          .hero-meta { order: -1; flex: none !important; width: 100%; margin-left: 0 !important; text-align: center !important; justify-content: center !important; padding-bottom: 0; margin-bottom: 8px; }
           .spike-label { margin-bottom: 0; }
           .spike-text { display: none; }
           .pct-sign { font-size: 24px; }
-          .chart-canvas { height: 250px; }
+          .chart-canvas { height: 220px; }
           .chart-header { padding: 10px 16px 4px; }
           .bottom-section { padding: 16px 16px 32px; }
           .bottom-grid { grid-template-columns: 1fr; }
+          .change-desktop { display: none !important; }
+          .change-mobile { display: flex !important; }
+          .change-label-desktop { display: none !important; }
+          .telegram-card { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+          .telegram-input { background: transparent !important; border: none !important; border-bottom: 1px solid rgba(255,255,255,0.12) !important; border-radius: 0 !important; padding: 12px 40px 12px 0 !important; font-size: 12px !important; letter-spacing: 0.1em; }
+          .telegram-btn-full { display: none !important; }
+          .telegram-btn-arrow { display: flex !important; }
         }
         @keyframes gentle-pulse {
           0%, 100% { opacity: 1; }
@@ -530,10 +541,12 @@ function playWatermarkSound(bull) {
 
               {/* Change block */}
               <div className="change-block">
-                <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.12em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
+                <div className="change-label-desktop" style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.12em', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>
                   2-DAY CHANGE
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+
+                {/* Desktop: arrow + odometer + small ring */}
+                <div className="change-desktop" style={{ alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '16px', color: accentColor, fontFamily: 'var(--font-display)' }}>
                     {isUp ? '▲' : '▼'}
                   </span>
@@ -564,6 +577,35 @@ function playWatermarkSound(bull) {
                       fontFamily="Syne, sans-serif"
                     >%</text>
                   </svg>
+                </div>
+
+                {/* Mobile: large standalone ring with % inside */}
+                <div className="change-mobile" style={{ flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ position: 'relative', width: '128px', height: '128px' }}>
+                    <svg width="128" height="128" style={{ position: 'absolute', top: 0, left: 0 }}>
+                      <circle cx="64" cy="64" r="58" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="2.5" />
+                      <circle
+                        cx="64" cy="64" r="58" fill="none"
+                        stroke={accentColor} strokeWidth="3"
+                        strokeDasharray="364.4"
+                        strokeDashoffset={364.4 * (1 - ringProgress)}
+                        strokeLinecap="round"
+                        transform="rotate(-90 64 64)"
+                        style={{ transition: 'stroke-dashoffset 1.2s ease' }}
+                      />
+                    </svg>
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '13px', color: accentColor, fontFamily: 'var(--font-display)', marginBottom: '2px' }}>
+                        {isUp ? '▲' : '▼'}
+                      </span>
+                      <span style={{ fontSize: '24px', fontWeight: 700, color: accentColor, fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
+                        {change2d !== null ? `${Math.abs(change2d).toFixed(2)}%` : '—'}
+                      </span>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '9px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)', letterSpacing: '0.14em', marginTop: '12px', textTransform: 'uppercase' }}>
+                    2-DAY THRESHOLD (20%)
+                  </span>
                 </div>
               </div>
 
@@ -635,22 +677,34 @@ function playWatermarkSound(bull) {
           <div className="bottom-grid">
 
             {/* Telegram send */}
-            <div className="glass-card" style={{ padding: '24px' }}>
+            <div className="glass-card telegram-card" style={{ padding: '24px' }}>
               <div style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.1em', marginBottom: '16px', fontFamily: 'var(--font-body)' }}>
                 SEND TELEGRAM MESSAGE
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <input
-                  type="text"
-                  className="text-input"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && sendTelegram()}
-                  placeholder="Type a message…"
-                  style={{ padding: '11px 14px', width: '100%' }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="text"
+                    className="text-input telegram-input"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && sendTelegram()}
+                    placeholder="BROADCAST SIGNAL..."
+                    style={{ padding: '11px 14px', width: '100%' }}
+                  />
+                  <button
+                    className="telegram-btn-arrow"
+                    onClick={sendTelegram}
+                    style={{
+                      position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: 'var(--green)', fontSize: '20px', padding: '8px',
+                      alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >→</button>
+                </div>
                 <button
-                  className="btn-primary"
+                  className="btn-primary telegram-btn-full"
                   onClick={sendTelegram}
                   style={{ padding: '11px', fontSize: '13px' }}
                 >

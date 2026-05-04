@@ -63,6 +63,34 @@ export default function Layout({ children }) {
           padding: 7px 14px; flex-shrink: 0; margin-left: 24px;
           font-size: 12px;
         }
+        .bottom-nav { display: none; }
+        .bottom-nav-item-dot { display: none; }
+        @media (max-width: 768px) {
+          .nav-links { display: none; }
+          .nav-signout { display: none; }
+          .content-wrapper { padding-bottom: 64px; }
+          .bottom-nav {
+            display: flex; position: fixed; bottom: 0; left: 0; right: 0;
+            height: 60px; z-index: 200;
+            background: rgba(4,5,9,0.88);
+            backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+            border-top: 1px solid var(--border);
+            justify-content: space-around; align-items: center;
+          }
+          .bottom-nav-item {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            text-decoration: none; font-family: var(--font-body);
+            font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
+            color: var(--text-3); padding: 6px 12px;
+            text-transform: uppercase; transition: color 0.15s;
+          }
+          .bottom-nav-item.active { color: var(--text-1); }
+          .bottom-nav-item-dot {
+            display: block; width: 16px; height: 2px; border-radius: 1px;
+            background: currentColor; opacity: 0; transition: opacity 0.15s;
+          }
+          .bottom-nav-item.active .bottom-nav-item-dot { opacity: 1; }
+        }
       `}</style>
 
       <nav className="topnav">
@@ -90,9 +118,22 @@ export default function Layout({ children }) {
         </button>
       </nav>
 
-      <div style={{ paddingTop: 'var(--nav-h)' }}>
+      <div className="content-wrapper" style={{ paddingTop: 'var(--nav-h)' }}>
         {children}
       </div>
+
+      <nav className="bottom-nav">
+        {NAV.map(({ href, label, pulse }) => {
+          const active = pathname === href;
+          return (
+            <Link key={href} href={href} className={`bottom-nav-item${active ? ' active' : ''}`}>
+              {pulse && !active && <span className="live-dot" />}
+              <span>{label}</span>
+              <span className="bottom-nav-item-dot" />
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }
